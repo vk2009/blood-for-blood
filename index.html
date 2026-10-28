@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Blood For Blood</title>
+<link rel="stylesheet" href="style.css" />
+<script type="importmap">
+  { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/" } }
+</script>
+</head>
+<body class="on-title">
+<div id="game"></div>
+
+<!-- ============ HUD ============ -->
+<div id="hud">
+  <div id="objective">
+    <div id="obj-chapter"></div>
+    <div id="obj-row"><span class="obj-diamond"></span><span id="obj-text"></span></div>
+    <div id="obj-en"></div>
+    <div id="obj-dist"></div>
+  </div>
+  <div id="money"><span class="peso">$</span><span id="money-val">0</span><small>pesos</small></div>
+  <div id="mapwrap">
+    <canvas id="minimap" width="220" height="220"></canvas>
+    <div id="zone"><b id="zone-name"></b><small id="zone-region"></small></div>
+  </div>
+  <div id="waypoint"><div class="wp-diamond"></div><div id="wp-dist"></div></div>
+  <div id="prompt"></div>
+  <div id="health">
+    <div class="hp-label">❤ HEALTH</div>
+    <div class="hp-bar"><div id="hp-fill"></div></div>
+  </div>
+  <div id="fight-hint"><kbd>Click</kbd>/<kbd>F</kbd> punch · hold <kbd>Right-click</kbd>/<kbd>C</kbd> block · <kbd>R</kbd> kick · <kbd>Space</kbd> dodge · <kbd>E</kbd> takedown (stunned foe)</div>
+  <div id="hints">
+    <span><kbd>WASD</kbd> move</span><span><kbd>Shift</kbd> run</span><span><kbd>E</kbd> interact</span>
+    <span><kbd>I</kbd> inventory</span><span><kbd>Esc</kbd> menu</span>
+  </div>
+</div>
+<div id="plates"></div>
+<div id="banner"><div id="banner-title"></div><div id="banner-sub"></div></div>
+<div id="toasts"></div>
+<div id="saving"><span class="spin"></span><span id="saving-text">Saving…</span></div>
+<div id="vignette"></div>
+
+<!-- ============ Dialogue ============ -->
+<div id="dialogue">
+  <div id="d-name"></div>
+  <div id="d-text"></div>
+  <div id="d-en"></div>
+  <ol id="choices"></ol>
+  <div class="d-hint" id="d-hint"></div>
+</div>
+<div id="qte"><kbd>E</kbd><span id="qte-label"></span></div>
+<div id="crosshair"></div>
+<div id="range-hud"></div>
+
+<!-- ============ Cinematics ============ -->
+<div id="letterbox"><div></div><div></div></div>
+<div id="skip-hint"><kbd>Tab</kbd> skip scene</div>
+<div id="card"><div id="card-title"></div><div id="card-sub"></div><div id="card-en"></div></div>
+<div id="fade"></div>
+
+<!-- ============ Inventory ============ -->
+<div id="inventory" class="panel-overlay hidden">
+  <div class="panel inv-panel">
+    <div class="panel-head"><h2>Inventory</h2><span class="inv-money"></span><button class="x" data-close>✕</button></div>
+    <div class="inv-body">
+      <ul id="inv-list"></ul>
+      <div id="inv-detail"><div class="inv-icon-big"></div><h3></h3><p></p></div>
+    </div>
+    <div class="d-hint"><kbd>I</kbd> or <kbd>Esc</kbd> close</div>
+  </div>
+</div>
+
+<!-- ============ Pause menu ============ -->
+<div id="pause" class="panel-overlay hidden">
+  <div class="panel menu-panel">
+    <div class="menu-brand">BLOOD FOR BLOOD</div>
+    <div id="pause-obj"></div>
+    <button data-act="resume">Resume</button>
+    <button data-act="save" id="btn-save">Save Game</button>
+    <div id="save-note"></div>
+    <button data-act="load">Load Game</button>
+    <button data-act="inventory">Inventory</button>
+    <button data-act="controls">Controls</button>
+    <button data-act="gfx">Graphics: High</button>
+    <button data-act="title">Quit to Title</button>
+  </div>
+</div>
+
+<!-- ============ Load menu ============ -->
+<div id="loadmenu" class="panel-overlay hidden">
+  <div class="panel menu-panel">
+    <div class="panel-head"><h2>Load Game</h2><button class="x" data-close>✕</button></div>
+    <div id="slots"></div>
+  </div>
+</div>
+
+<!-- ============ Controls ============ -->
+<div id="controls" class="panel-overlay hidden">
+  <div class="panel menu-panel">
+    <div class="panel-head"><h2>Controls</h2><button class="x" data-close>✕</button></div>
+    <table class="ctl">
+      <tr><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></td><td>Move</td></tr>
+      <tr><td>Mouse</td><td>Look (click the game to lock the mouse)</td></tr>
+      <tr><td><kbd>Shift</kbd></td><td>Run</td></tr>
+      <tr><td><kbd>E</kbd></td><td>Interact · talk · advance dialogue</td></tr>
+      <tr><td><kbd>1</kbd>–<kbd>4</kbd></td><td>Pick a dialogue choice</td></tr>
+      <tr><td><kbd>I</kbd></td><td>Inventory</td></tr>
+      <tr><td><kbd>Esc</kbd> / <kbd>P</kbd></td><td>Menu (save / load)</td></tr>
+      <tr><td><kbd>Tab</kbd></td><td>Skip cutscene</td></tr>
+      <tr><td>Click / <kbd>F</kbd></td><td>Punch (in a fight)</td></tr>
+      <tr><td>Right-click / <kbd>C</kbd></td><td>Block (hold)</td></tr>
+      <tr><td><kbd>Space</kbd></td><td>Dodge (in a fight)</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ============ Title ============ -->
+<div id="title" class="screen">
+  <div class="title-inner">
+    <div class="eyebrow">A Breaking Bad story · The life of Gustavo Fring</div>
+    <h1 class="logo"><b>BLOOD</b><span>FOR</span><b>BLOOD</b></h1>
+    <div class="title-buttons">
+      <button data-act="continue" id="btn-continue">Continue</button>
+      <button data-act="new">New Game</button>
+      <button data-act="load">Load Game</button>
+      <button data-act="controls">Controls</button>
+      <button data-act="gfx">Graphics: High</button>
+    </div>
+    <div id="continue-info"></div>
+  </div>
+</div>
+
+<!-- ============ Game over ============ -->
+<div id="gameover" class="screen hidden">
+  <div class="title-inner">
+    <h1 class="dead">YOU DIED</h1>
+    <p id="gameover-why"></p>
+    <div class="title-buttons">
+      <button data-act="retry">Load Last Save</button>
+      <button data-act="title">Quit to Title</button>
+    </div>
+    <div id="gameover-save"></div>
+  </div>
+</div>
+
+<!-- ============ End ============ -->
+<div id="ending" class="screen hidden">
+  <div class="title-inner">
+    <div class="eyebrow">End of Part One</div>
+    <h1 class="logo"><b>BLOOD</b><span>FOR</span><b>BLOOD</b></h1>
+    <p>Emilio Gonzalez is gone. Gustavo Fring remembers everything.<br/>Twenty years later, Don Eladio will learn what patience costs.</p>
+    <div class="title-buttons"><button data-act="title">Return to Title</button></div>
+  </div>
+</div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
