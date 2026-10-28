@@ -18,6 +18,8 @@ import { BEATS, BEAT_INDEX, CONVOS, USE_CONVOS, ITEMS, FOODS } from './story.js'
 import { UI, Talk, InventoryPanel, Saves, describeSave, fmtPesos, translateName } from './ui.js';
 import { waveFlags, flickerFires } from './props.js';
 import { sfx } from './sfx.js';
+import { OpenWorld } from './openworld.js';
+import { Gunfight } from './gunplay.js';
 
 // ---------------------------------------------------------------- renderer
 let MAX_DPR = Math.min(devicePixelRatio, 1.0);
@@ -272,7 +274,7 @@ function setHeroLook(look) {
   G.hero = hero;
 }
 
-const state = { beat: 0, inv: [], pesos: 0, flags: {}, food: {} };
+const state = { beat: 0, inv: [], pesos: 0, flags: {}, food: {}, stats: {}, side: null };
 let loc = null;
 let peds = [];
 let mode = 'title';      // title | play | talk | scene | fight | gameover | ending
@@ -288,6 +290,7 @@ const S = {
   has: (item) => state.inv.includes(item),
   flag: (f) => !!state.flags[f],
   playerPos: () => player.pos,
+  stat: (k) => state.stats[k] || 0,
 };
 const beatText = (b) => (typeof b?.text === 'function' ? b.text(S) : b?.text || '');
 
@@ -297,6 +300,11 @@ const G = {
   get loc() { return loc; },
   get pesos() { return state.pesos; },
   get paused() { return overlay !== null; },
+  get mode() { return mode; },
+  get heroLook() { return heroLook; },
+  refresh: () => refreshWorld(),
+  runConvo: (fn) => runConvo(fn),
+  stat(k, n = 1) { state.stats[k] = (state.stats[k] || 0) + n; },
   hero: null,
   randomLook,
   showLoc: (id) => showLoc(id),
@@ -343,12 +351,15 @@ const G = {
 };
 let director = new Director(G);
 G.director = director;
+const ow = new OpenWorld(G, state);
+G.ow = ow;
 setHeroLook('emilio');
 
 // ---------------------------------------------------------------- locations
 function showLoc(id) {
   if (loc) scene.remove(loc.root);
   loc = getLocation(id);
+  ow.decorate(loc);
   scene.add(loc.root);
   applyEnv();
   applyInteriorShadows();
@@ -402,6 +413,7 @@ function enterLocation(id, spawn = 'default') {
   buildMinimapBase();
   currentZone = '';
   ui.banner(loc.name, loc.region);
+  ow.onEnter(loc);
 }
 
 // Story NPCs, pickups and thugs reflect the story state.
@@ -422,7 +434,7 @@ function refreshWorld() {
       loc.storyNpcObjs.delete(def.id);
     }
   }
-  for (const it of loc.interactables) if (it.mesh) it.mesh.visible = !(it.item && state.inv.includes(it.item));
+  for (const it of loc.interactables) if (it.mesh) it.mesh.visible = !(it.item && state.inv.includes(it.item)) && (!it.when || it.when(S));
   // thugs
   loc.thugActors ||= {};
   for (const d of loc.dangers) {
@@ -453,6 +465,9 @@ function startBeat(i, from = null) {
   if (!b) return;
   ui.prompt(null);
   if (b.type === 'scene') {
+    ow.cancelTransient('scene');
+    ow.endCrime();
+    ow.endPolice();
     mode = 'scene';
     ui.setObjective(b.chapter, '', false);
     setStoryNpcsVisible(false);
@@ -489,6 +504,7 @@ function startBeat(i, from = null) {
 function processEvents() {
   while (pendingEvents.length) {
     const e = pendingEvents.shift();
+    ow.onEvent(e);
     const b = currentBeat();
     if (b?.type === 'goal' && b.done(e, S)) {
       ui.toast(beatText(b), 'Objective complete');
@@ -503,9 +519,12 @@ function processEvents() {
 function snapshot() {
   const b = currentBeat();
   return {
-    v: 1, time: Date.now(), beat: state.beat, chapter: b?.chapter, objective: beatText(b),
+    v: 2, time: Date.now(), beat: state.beat, beatId: b?.id, chapter: b?.chapter, objective: beatText(b),
     loc: b?.type === 'goal' ? loc.id : null, x: player.pos.x, z: player.pos.z, yaw: player.modelYaw,
-    inv: [...state.inv], pesos: state.pesos, flags: { ...state.flags }, food: { ...state.food }, hp: player.hp,
+    inv: [...state.inv], pesos: state.pesos, food: { ...state.food }, hp: player.hp,
+    // street fights that only exist for a moment are never saved as "cleared"
+    flags: Object.fromEntries(Object.entries(state.flags).filter(([k]) => !/^cleared:(ev|cops)\d|^cleared:(ortuzar|choros2)$/.test(k))),
+    stats: { ...state.stats }, side: state.side ? JSON.parse(JSON.stringify(state.side)) : null,
   };
 }
 function autosave() {
@@ -524,7 +543,11 @@ function manualSave() {
 }
 function resetForLoad() {
   director.abort();
+  if (activeDanger) { activeDanger.armed = false; activeDanger = null; }
   endFightCleanup();
+  ow.cancelTransient();
+  ow.endCrime();
+  ow.endPolice();
   closeTalk();
   ui.hideCard(true); ui.fade(false); ui.qte(null);
   moodOverride = null;
@@ -538,17 +561,22 @@ function loadGame(save) {
   if (!save) { newGame(); return; }
   resetForLoad();
   state.inv = [...save.inv]; state.pesos = save.pesos; state.flags = { ...save.flags }; state.food = { ...(save.food || {}) };
+  state.stats = { ...(save.stats || {}) };
+  state.side = save.side ? JSON.parse(JSON.stringify(save.side)) : null;
   player.hp = save.hp > 0 ? save.hp : PLAYER_HP;
   ui.setHealth(player.hp / PLAYER_HP);
   ui.setMoney(state.pesos);
   // reset danger zones so loaded state rebuilds thugs
-  const b = BEATS[save.beat];
-  startBeat(save.beat, b.type === 'goal' && save.loc ? { loc: save.loc, x: save.x, z: save.z, yaw: save.yaw } : null);
+  const bi = BEAT_INDEX[save.beatId] ?? save.beat;
+  const b = BEATS[bi];
+  startBeat(bi, b.type === 'goal' && save.loc ? { loc: save.loc, x: save.x, z: save.z, yaw: save.yaw } : null);
+  ow.afterLoad();
   ui.toast(save.objective || save.chapter || '', 'Loaded');
 }
 function newGame() {
   resetForLoad();
-  state.inv = []; state.pesos = 0; state.flags = {}; state.food = {};
+  state.inv = []; state.pesos = 0; state.flags = {}; state.food = {}; state.stats = {}; state.side = null;
+  ow.afterLoad();
   player.hp = PLAYER_HP; ui.setHealth(1);
   ui.setMoney(0);
   setHeroLook('emilio');
@@ -595,7 +623,10 @@ function updatePlayer(dt, canMove) {
     const turnSlow = brawl && player.blocking ? 1 : THREE.MathUtils.clamp(0.35 + facing, 0.35, 1);
     player.pos.addScaledVector(move, speed * dt * turnSlow);
   }
-  if (brawl) {
+  if (brawl?.faceYaw) {
+    const y = brawl.faceYaw();
+    if (y != null) targetYaw = y;
+  } else if (brawl) {
     // Face where you walk; square up to the nearest thug when standing, blocking or swinging.
     const t = brawl.nearest(4);
     if (player.atk > 0) targetYaw = player.modelYaw;
@@ -675,9 +706,10 @@ function updateCamera(dt) {
   const cp = Math.cos(player.pitch), sp = Math.sin(player.pitch);
   back.set(-Math.sin(player.yaw) * cp, sp, -Math.cos(player.yaw) * cp);
   right.set(-Math.cos(player.yaw), 0, Math.sin(player.yaw));
-  pivot.set(player.pos.x, player.pos.y + 1.55, player.pos.z).addScaledVector(right, loc.interior ? 0.3 : 0.45);
-  let want = cam.dist;
-  ray.set(pivot, back); ray.far = cam.dist;
+  const aim = brawl?.aiming;
+  pivot.set(player.pos.x, player.pos.y + 1.55, player.pos.z).addScaledVector(right, aim ? 0.75 : loc.interior ? 0.3 : 0.45);
+  let want = aim ? Math.min(cam.dist, 2.1) : cam.dist;
+  ray.set(pivot, back); ray.far = want;
   const hit = ray.intersectObjects(loc.occluders, false)[0];
   if (hit) want = Math.max(0.5, hit.distance - 0.25);
   cam.cur = want < cam.cur ? want : cam.cur + (want - cam.cur) * Math.min(1, dt * 4);
@@ -735,12 +767,14 @@ function updateInteraction(dt) {
   if (!input.pressed('KeyE') || interactCooldown > 0) return;
   if (t.kind === 'npc') {
     const n = t.npc, def = n.def;
-    if (def?.talk && CONVOS[def.talk]) runConvo(CONVOS[def.talk], n);
+    if (def?.talkFn) runConvo(def.talkFn, n);
+    else if (def?.talk && CONVOS[def.talk]) runConvo(CONVOS[def.talk], n);
     else runConvo((T) => linesConvo(T, n.name || 'Stranger', n.lines), n);
     return;
   }
   const it = t.it;
   if (locked) { runConvo((T) => T.say('Emilio', it.lockedMsg || 'Not yet.')); return; }
+  if (it.fn) { runConvo(it.fn); interactCooldown = 0.4; return; }
   if (it.type === 'pickup') {
     if (it.pesos) G.addPesos(it.pesos, ITEMS[it.item].name);
     G.give(it.item);
@@ -789,10 +823,16 @@ async function startFight(d) {
   mode = 'talk';
   ui.prompt(null);
   actors.forEach((a) => { a.faceTo = player.pos; });
-  await talk.say('Thug', d.barks[Math.floor(Math.random() * d.barks.length)]);
+  await talk.say(d.speaker || 'Thug', d.barks[Math.floor(Math.random() * d.barks.length)]);
+  if (activeDanger !== d) return;   // a save was loaded during the bark
   talk.close();
   mode = 'fight';
   document.body.classList.add('fighting');
+  if (d.guns) {
+    brawl = new Gunfight(G, d, actors);
+    ui.toast('Hold Right-click / Q to aim · Click / F to fire · R to reload. Buildings stop bullets — use cover. Out of sight, you catch your breath.', 'Gunfight!', true);
+    return;
+  }
   brawl = new Brawl(G, d, actors);
   ui.toast(`Click / F punch · R kick · hold Right-click / C block · Space dodge · E takedown when they're stunned${d.thugs.some((t) => t.weapon) ? ' — careful: a knife cuts through your block' : ''}`, 'Fight!', true);
 }
@@ -802,7 +842,7 @@ function endFightCleanup() {
   document.body.classList.remove('fighting');
   const p = G.player;
   p.atk = 0; p.blocking = false; p.dodge = 0; p.dead = 0;
-  if (hero) { hero.pose.guard = 0; hero.pose.punch = 0; hero.pose.jab = 0; hero.pose.hurt = 0; hero.pose.kick = 0; }
+  if (hero) { hero.pose.guard = 0; hero.pose.punch = 0; hero.pose.jab = 0; hero.pose.hurt = 0; hero.pose.kick = 0; hero.pose.point = 0; }
 }
 function endFight(result) {
   const d = activeDanger;
@@ -824,8 +864,9 @@ function endFight(result) {
     ui.toast('They gave up the chase.', 'You got away');
     resetThugs(d);
     mode = 'play';
+    G.emit('escaped:' + d.id);
   } else {
-    gameOver(`You were beaten unconscious in the ${d.name}.`);
+    gameOver(d.loseMsg || `You were beaten unconscious in the ${d.name}.`);
   }
 }
 
@@ -951,20 +992,24 @@ function drawMinimap() {
     c.fillStyle = 'rgba(255,255,255,0.55)';
     c.beginPath(); c.arc(X(n.pos.x), Z(n.pos.z), 2 / zoom, 0, Math.PI * 2); c.fill();
   }
+  ow.drawMap(c, X, Z, zoom);
   c.restore();
-  // objective marker (clamped to the rim)
-  const t = objectiveTarget();
-  if (t) {
+  // objective markers (clamped to the rim): gold for the story, blue for the side job
+  const rim = (t, color) => {
     let mx = (t.x - player.pos.x) * s * zoom, mz = (t.z - player.pos.z) * s * zoom;
     const cs = Math.cos(theta), sn = Math.sin(theta);
     let rx = mx * cs - mz * sn, ry = mx * sn + mz * cs;
     const dist = Math.hypot(rx, ry);
     if (dist > R - 12) { rx *= (R - 12) / dist; ry *= (R - 12) / dist; }
     c.save(); c.translate(R + rx, R + ry); c.rotate(Math.PI / 4);
-    c.fillStyle = '#e8c46a'; c.strokeStyle = '#fff'; c.lineWidth = 2;
+    c.fillStyle = color; c.strokeStyle = '#fff'; c.lineWidth = 2;
     c.fillRect(-6, -6, 12, 12); c.strokeRect(-6, -6, 12, 12);
     c.restore();
-  }
+  };
+  const st = ow.sideTarget();
+  if (st) rim(st, '#3aa0ff');
+  const t = objectiveTarget();
+  if (t) rim(t, '#e8c46a');
   // player arrow
   c.save(); c.translate(R, R);
   c.rotate(Math.atan2(Math.cos(player.modelYaw), Math.sin(player.modelYaw)) - Math.atan2(Math.cos(player.yaw), Math.sin(player.yaw)));
@@ -1007,7 +1052,7 @@ function updateWaypoint() {
 // ---------------------------------------------------------------- menus & screens
 const $ = (id) => document.getElementById(id);
 const screens = { title: $('title'), gameover: $('gameover'), ending: $('ending') };
-const overlays = { pause: $('pause'), inventory: $('inventory'), load: $('loadmenu'), controls: $('controls') };
+const overlays = { pause: $('pause'), inventory: $('inventory'), load: $('loadmenu'), controls: $('controls'), journal: $('journal') };
 function hideScreens() { for (const s of Object.values(screens)) s.classList.add('hidden'); }
 function openOverlay(name, back = null) {
   for (const o of Object.values(overlays)) o.classList.add('hidden');
@@ -1022,6 +1067,7 @@ function openOverlay(name, back = null) {
   }
   if (name === 'inventory') invPanel.open(state.inv, state.pesos, state.food, player.hp);
   if (name === 'load') renderSlots();
+  if (name === 'journal') { const b = currentBeat(); ow.renderJournal(b?.chapter, beatText(b)); }
   overlays[name].classList.remove('hidden');
   document.exitPointerLock?.();
 }
@@ -1060,8 +1106,12 @@ $('pause').addEventListener('click', (e) => {
   else if (act === 'save') { manualSave(); openOverlay('pause'); }
   else if (act === 'load') openOverlay('load', 'pause');
   else if (act === 'inventory') openOverlay('inventory', 'pause');
+  else if (act === 'journal') openOverlay('journal', 'pause');
   else if (act === 'controls') openOverlay('controls', 'pause');
   else if (act === 'title') toTitle();
+});
+$('journal').addEventListener('click', (e) => {
+  if (e.target.closest('[data-act=abandon]')) { sfx.click(); ow.abandon(); openOverlay('journal', overlayBack); }
 });
 $('title').addEventListener('click', (e) => {
   const act = e.target.closest('button')?.dataset.act;
@@ -1137,11 +1187,12 @@ function handleMenuKeys() {
     return;
   }
   if (overlay) {
-    if (input.pressed('Escape') || input.pressed('KeyP')) backFromOverlay();
+    if (input.pressed('Escape') || input.pressed('KeyP') || (overlay === 'journal' && input.pressed('KeyJ'))) backFromOverlay();
     return;
   }
   if (input.pressed('KeyP') || input.pressed('Escape')) { openOverlay('pause'); return; }
   if (input.pressed('KeyI') && (mode === 'play')) openOverlay('inventory');
+  if (input.pressed('KeyJ') && (mode === 'play')) openOverlay('journal');
 }
 
 // ---------------------------------------------------------------- loop
@@ -1207,6 +1258,7 @@ function frame() {
       if (brawl && activeDanger?.id === id) continue;
       for (const a of list) a.update(sdt);
     }
+    if (!paused) ow.update(dt);
     const agents = [player.pos, ...peds.map((n) => n.pos)];
     loc.updateTraffic(sdt, agents);
     if (mode !== 'fade') updateCamera(dt);
@@ -1257,7 +1309,7 @@ window.game = {
     mode = 'portrait';
   },
   G, state, player, camera, S, BEATS,
-  get loc() { return loc; }, get mode() { return mode; },
+  get loc() { return loc; }, get mode() { return mode; }, get fight() { return brawl; },
   jump(id) { const i = BEAT_INDEX[id]; if (i != null) { resetForLoad(); startBeat(i); } },
   go: (id, spawn) => enterLocation(id, spawn),
 };

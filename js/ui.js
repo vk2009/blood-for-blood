@@ -5,7 +5,8 @@ const $ = (id) => document.getElementById(id);
 export const fmtPesos = (n) => Math.round(n).toLocaleString('es-CL');
 
 // ---------------------------------------------------------------- saves
-const KEYS = { auto: 'bfb.save.auto', manual: 'bfb.save.manual' };
+// v2 saves (open-world branch): older saves point at different story beats.
+const KEYS = { auto: 'bfb.save2.auto', manual: 'bfb.save2.manual' };
 export const Saves = {
   read(slot) {
     try { const s = localStorage.getItem(KEYS[slot]); return s ? JSON.parse(s) : null; } catch { return null; }

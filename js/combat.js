@@ -8,7 +8,7 @@ import { sfx } from './sfx.js';
 import { createKnife } from './props.js';
 
 const PLAYER_HP = 100;
-const ENEMY_HP = 42;
+const ENEMY_HP = 56;
 const angDiff = (a, b) => Math.atan2(Math.sin(b - a), Math.cos(b - a));
 
 // Pick a yaw so that falling backwards lands the body on open floor, not in a wall.
@@ -52,7 +52,8 @@ export class Brawl {
       e.knife.position.set(-0.24, 0.95, 0.12);
       e.a.root.add(e.knife);
     }
-    this.attacker = null;
+    this.attackers = new Set();
+    this.maxAtk = this.enemies.length >= 3 ? 2 : 1;
     this.over = null;
     this.endT = 0;
     this.escapeT = 0;
@@ -181,10 +182,13 @@ export class Brawl {
       if (d > reach) continue;
       if (Math.abs(angDiff(p.modelYaw, Math.atan2(dx, dz))) > 1.15) continue;
       any = true;
+      if ((e.state === 'approach' || e.state === 'recover') && Math.random() < 0.3) {
+        e.state = 'guard'; e.t = 0.55; e.a.tweenPose('guard', 1, 0.05);
+      }
       const blocked = e.state === 'guard';
       e.hp -= blocked ? dmg * 0.25 : dmg;
       e.knock.set(dx / d, 0, dz / d).multiplyScalar(blocked ? 1.2 : push);
-      if (e === this.attacker && e.state === 'windup' && !blocked) this.attacker = null; // interrupted
+      if (e.state === 'windup' && !blocked) this.attackers.delete(e); // interrupted
       if (!blocked) { e.a.tweenPose('throw', 0, 0.08); e.state = 'stagger'; e.t = push > 4 ? 0.9 : 0.6; e.a.tweenPose('hurt', 1, 0.05); e.a.tweenPose('punch', 0, 0.05); }
       if (e.hp <= 0) this.knockDown(e);
     }
@@ -197,7 +201,7 @@ export class Brawl {
     e.a.yaw = fallYaw(this.G.loc, e.a.pos, e.a.yaw);
     e.state = 'down';
     e.a.tweenPose('guard', 0, 0.1); e.a.tweenPose('punch', 0, 0.1); e.a.tweenPose('hurt', 1, 0.1);
-    if (this.attacker === e) this.attacker = null;
+    this.attackers.delete(e);
     sfx.thud();
   }
 
@@ -229,11 +233,13 @@ export class Brawl {
       e.t -= dt; e.cool -= dt;
       let speed = 0;
       switch (e.state) {
-        case 'approach':
-        case 'guard': {
+        case 'guard':
+          if (e.t <= 0) e.state = 'approach';
+          // fall through
+        case 'approach': {
           // Keep a ring around the player (the current attacker closes in, others hang back),
           // with smoothed velocity and hysteresis so nobody jitters on the boundary.
-          const ring = this.attacker && this.attacker !== e ? 2.5 : 1.3;
+          const ring = this.attackers.size >= this.maxAtk && !this.attackers.has(e) ? 2.5 : 1.3;
           e.ring += (ring - e.ring) * Math.min(1, dt * 2);
           e.strafeT -= dt;
           if (e.strafeT <= 0) { e.strafe *= -1; e.strafeT = 1.8 + Math.random() * 2.5; }
@@ -244,8 +250,8 @@ export class Brawl {
           else { wx = -uz * e.strafe * 0.55; wz = ux * e.strafe * 0.55; }
           const k = 1 - Math.exp(-7 * dt);
           e.vel.x += (wx - e.vel.x) * k; e.vel.z += (wz - e.vel.z) * k;
-          if (!p.dead && !this.attacker && e.cool <= 0 && d < 1.8) {
-            this.attacker = e; e.state = 'windup'; e.t = 0.6;
+          if (!p.dead && e.state === 'approach' && this.attackers.size < this.maxAtk && e.cool <= 0 && d < 1.8) {
+            this.attackers.add(e); e.state = 'windup'; e.t = 0.45;
             a.tweenPose('guard', 0.25, 0.15);
             a.tweenPose('throw', 0.32, 0.35);     // fist cocked back: the tell
           }
@@ -268,11 +274,11 @@ export class Brawl {
           if (e.t <= 0) { e.state = 'recover'; e.t = 0.45; a.tweenPose('punch', 0, 0.2); a.tweenPose('guard', 1, 0.3); }
           break;
         case 'recover':
-          if (e.t <= 0) { e.state = 'approach'; e.cool = 0.9 + Math.random() * 1.6; if (this.attacker === e) this.attacker = null; }
+          if (e.t <= 0) { e.state = 'approach'; e.cool = 0.6 + Math.random() * 1.1; this.attackers.delete(e); }
           break;
         case 'stagger':
           e.vel.multiplyScalar(Math.max(0, 1 - dt * 10));
-          if (e.t <= 0) { e.state = 'approach'; a.tweenPose('hurt', 0, 0.2); a.tweenPose('guard', 1, 0.2); e.cool = Math.max(e.cool, 0.5); }
+          if (e.t <= 0) { e.state = 'approach'; a.tweenPose('hurt', 0, 0.2); a.tweenPose('guard', 1, 0.2); e.cool = Math.max(e.cool, 0.35); this.attackers.delete(e); }
           break;
       }
       a.pos.x += e.vel.x * dt; a.pos.z += e.vel.z * dt;
@@ -321,16 +327,16 @@ export class Brawl {
       sfx.block();
       e.state = 'stagger'; e.t = 0.5; e.a.tweenPose('hurt', 0.6, 0.05);
       e.knock.set(-Math.sin(face), 0, -Math.cos(face)).multiplyScalar(2.5);
-      this.attacker = null;
+      this.attackers.delete(e);
       return;
     }
     if (p.blocking && facing && knife) {
       p.hp -= 6; sfx.block(); G.ui.hit(); G.ui.setHealth(p.hp / PLAYER_HP);   // a blade cuts through a block
-      e.state = 'stagger'; e.t = 0.4; this.attacker = null;
+      e.state = 'stagger'; e.t = 0.4; this.attackers.delete(e);
       if (p.hp <= 0) { p.dead = 0.001; p.modelYaw = fallYaw(G.loc, p.pos, p.modelYaw); sfx.thud(); }
       return;
     }
-    p.hp -= knife ? 15 + Math.random() * 4 : 11 + Math.random() * 5;
+    p.hp -= knife ? 18 + Math.random() * 5 : 13 + Math.random() * 6;
     p.stun = 0.35;
     G.hero.pose.hurt = 1;
     G.ui.hit();

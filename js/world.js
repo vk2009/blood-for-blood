@@ -8,6 +8,7 @@ import {
   contactShadow, createCar, building, house, parkCar, streetlight, rock, shrub, tree, dumpster, bench, fence, lowWall,
   ground, road, mesas, desertScatter,
 } from './kit.js';
+import { createPistol } from './gunplay.js';
 import {
   TEX2, chileFlagTexture, mexicoFlagTexture, flagPole, shack, shackBlock, room, partition, table, chair, bed, shelf, crate,
   trash, barrelFire, clothesLine, lampPost, corkBoard, framedPicture, portraitTexture, createTrain, track, createPlane,
@@ -29,6 +30,12 @@ function dirtRoad(L, x, z, len, alongX, width) {
 // Dark, littered alley floor between shack rows.
 function alleyFloor(L, x0, x1, z0, z1) {
   flat(x1 - x0, z1 - z0, std({ map: withRepeat(TEX2.dirtFloor, (x1 - x0) / 3, (z1 - z0) / 3), roughness: 1, color: '#7a6a5a' }), L.root, (x0 + x1) / 2, 0.03, (z0 + z1) / 2);
+}
+// Waist-high cover that stops bullets (crates, sandbags).
+function cover(L, x, z, w, d, h = 1.25, color = '#8a6a42') {
+  const m = mesh(box(w, h, d), mat(color, 0.9), L.root, x, h / 2, z);
+  L.addBox(x, z, w, d);
+  L.occluders.push(m);
 }
 function graffitiOn(L, x, y, z, rot, w = 4, h = 2) {
   const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), std({ map: TEX2.graffiti, transparent: true, roughness: 0.9, polygonOffset: true, polygonOffsetFactor: -1 }));
@@ -318,8 +325,40 @@ function buildCuartel() {
   militaryTruck(L, 16, 10, 0.3);
   militaryTruck(L, -14, 14, -0.2);
   for (const [x1, z1, x2, z2] of [[-40, -40, 40, -40], [-40, 42, 40, 42], [-41, -40, -41, 42], [41, -40, 41, 42]]) fence(L, x1, z1, x2, z2, { h: 3, barbed: true });
+  // Mess tables in front of the west barracks, sandbags by the east one
+  for (const z of [16, 19.5]) { table(L, -19.5, z, 2.6, 0.9, '#5a4430'); }
+  for (let k = 0; k < 5; k++) crate(L, 21.6, -6 + k * 0.9, 0.7, '#7a7258');
   andes(L, 0, 0, 1, 0.2, 1200, 430);
   skyline(L, 0, 0, 75, 240, 70, { hMin: 6, hMax: 26 });
+
+  // ---- playable boot camp
+  L.region = 'Santiago · 1976';
+  L.zones.push(
+    { name: 'Behind the Barracks', minX: -40, maxX: -33, minZ: -11, maxZ: 23 },
+    { name: 'Behind the Barracks', minX: 33, maxX: 40, minZ: -11, maxZ: 23 },
+    { name: 'Barracks', minX: -33, maxX: -23, minZ: -11, maxZ: 23 },
+    { name: 'Barracks', minX: 23, maxX: 33, minZ: -11, maxZ: 23 },
+    { name: 'Mess Tables', minX: -23, maxX: -15, minZ: 13, maxZ: 23 },
+    { name: 'Recruitment Office', minX: -22, maxX: 22, minZ: -40, maxZ: -19 },
+    { name: 'Parade Ground', minX: -40, maxX: 40, minZ: -40, maxZ: 42 },
+  );
+  const at = (S, ...ids) => ids.some((i) => S.at(i));
+  L.storyNpcs.push(
+    { id: 'sarge', name: 'Sargento Muñoz', look: 'sergeant', x: 4, z: 4, yaw: Math.PI, wander: 0, talk: 'sergeant', when: (S) => at(S, 'bcReport', 'bcCourse', 'bcRations', 'bcVictor') },
+    { id: 'tomas', name: 'Tomás Quiroga', look: 'tomas', x: -18.2, z: 17.8, yaw: -Math.PI / 2, wander: 0.4, talk: 'tomas',
+      when: (S) => at(S, 'bcReport', 'bcCourse', 'bcRations') || (at(S, 'bcVictor') && !S.flag('tomas:reported')) },
+    { id: 'victorIdle', name: 'Víctor Díaz López', look: 'victor', x: 19.5, z: -4.5, yaw: -Math.PI / 2, wander: 0, talk: 'victorIdle', when: (S) => at(S, 'bcReport', 'bcRations') },
+    { id: 'rc1', name: 'Recruit', look: 'recruit', x: -9, z: 0, yaw: 1, wander: 5, lines: ['Six weeks, they said. Six weeks and you are a man.', '…My feet are bleeding.'], when: (S) => at(S, 'bcReport', 'bcCourse', 'bcRations', 'bcVictor') },
+    { id: 'rc2', name: 'Recruit', look: 'bigRecruit', x: 12, z: 16, yaw: 3, wander: 5, lines: ['Stay away from Díaz López. His uncle is a colonel.'], when: (S) => at(S, 'bcReport', 'bcCourse', 'bcRations', 'bcVictor') },
+    { id: 'rc3', name: 'Recruit', look: 'recruit', x: -6, z: 22, yaw: 2, wander: 4, lines: ['Is it true you are from the cerros? You don’t talk like it.'], when: (S) => at(S, 'bcReport', 'bcCourse', 'bcRations', 'bcVictor') },
+  );
+  L.triggers.push({ id: 'behind', event: 'bc:behind', minX: -40, maxX: -34, minZ: -9, maxZ: 21, when: (S) => S.at('bcVictor') });
+  L.dangers.push({ id: 'bcVictor', name: 'Behind the Barracks', minX: -40, maxX: -33.2, minZ: -10, maxZ: 22, when: (S) => S.at('bcFight'),
+    speaker: 'Víctor Díaz López', loseMsg: 'Víctor and his friends left you in the dirt behind the barracks. The sergeant found you at dawn.',
+    thugs: [{ look: 'victor', x: -36.6, z: 4.6, yaw: Math.PI }, { look: 'bigRecruit', x: -38, z: 6.6, yaw: Math.PI }, { look: 'recruit', x: -35.2, z: 7, yaw: Math.PI }],
+    barks: ['¡Ahora, cerro! Let’s see if you bleed like the rest of them.'], reward: 0 });
+  L.spawns.yard = { x: 2, z: 14, yaw: Math.PI };
+  L.spawns.default = L.spawns.yard;
   L.finalize();
   return L;
 }
@@ -348,7 +387,10 @@ function buildHouse2() {
   mesh(box(0.12, 0.02, 0.08), mat('#c9b48a', 0.6), id, 0, 0.01, 0);
   id.position.set(2.85, 0.79, -2.0); L.root.add(id);
 
+  const gun = new THREE.Group(); gun.userData.dynamic = true;
+  gun.add(createPistol()); gun.rotation.set(0, 0.6, Math.PI / 2); gun.position.set(-2.9, 0.62, -0.75); L.root.add(gun);
   L.interactables.push(
+    { type: 'pickup', x: -2.2, z: -0.8, r: 1.0, label: 'Take your service pistol', item: 'pistol', mesh: gun, when: (S) => !S.past('resign') },
     { type: 'pickup', x: 2.85, z: -1.6, r: 1.1, label: 'Take your service ID', item: 'idcard', mesh: id },
     { type: 'use', x: 2.2, z: -1.6, r: 1.0, label: 'Read the savings ledger', event: 'ledger' },
     { type: 'use', x: 0.9, z: -2.2, r: 1.2, label: 'Plan the laundering front', event: 'plan_board', when: (S) => S.at('launder') },
@@ -580,8 +622,8 @@ function buildPollosStreet(riot) {
   seedRandom(riot ? 1986 : 1984);
   const id = riot ? 'riot' : 'pollos';
   const L = prep(new Loc(id, riot ? 'Avenida Matta — Night of the Protests' : 'Avenida Matta', {
-    bounds: riot ? { minX: -14, maxX: 14, minZ: -95, maxZ: 26 } : { minX: -30, maxX: 30, minZ: -20, maxZ: 26 },
-    env: OUT(riot ? 'night' : 'day'), pedCount: riot ? 0 : 10, camMax: 8 }));
+    bounds: riot ? { minX: -14, maxX: 14, minZ: -95, maxZ: 26 } : { minX: -80, maxX: 80, minZ: -20, maxZ: 26 },
+    env: OUT(riot ? 'night' : 'day'), pedCount: riot ? 0 : 16, camMax: 8 }));
   L.region = riot ? 'Santiago · 1986' : 'Santiago · 1984';
   L.pedLines = riot ? 'riot' : 'santiago';
   ground(L, TEX.concrete, 80);
@@ -598,9 +640,32 @@ function buildPollosStreet(riot) {
     for (const x of [-6, -3, 3, 6]) { table(L, x, 7.6, 0.9, 0.9, '#f2efe6', 0.72); }
     parkCar(L, -12, 3.2, Math.PI / 2, '#3a4a5a');
     streetlight(L, -15, 5.5, Math.PI); streetlight(L, 15, 5.5, Math.PI);
+    // The rest of Avenida Matta: shops both ways, a warehouse at the east end
+    const shopsN = [[-45, 20, 'SASTRERÍA', 'TAILOR', '#c2b49a'], [45, 20, 'DENTISTA', 'DENTIST', '#a9b8c2'], [-68.5, 21, 'ESCUELA', 'SCHOOL', '#d8cdb5']];
+    for (const [x, w, name, en, c] of shopsN) building(L, { x, z: 14, w, d: 10, h: rr(6, 9), color: c, face: '-z', variant: 'shop',
+      sign: name, signSub: en, signBg: '#2a2a2a', signFg: '#f2e2b0', signWidth: 7, signY: 3.6, signOut: 0.1, accent: pick(['#7a3a2a', '#2a4a6a', '#3a5a3a']) });
+    building(L, { x: 68.5, z: 14, w: 21, d: 10, h: 7, color: '#8a8478', roof: '#5a5650', face: '-z', variant: 'slit', door: true, doorColor: '#3a3a3a', accent: '#5a5650',
+      sign: 'BODEGA SAN PABLO', signSub: 'WAREHOUSE', signBg: '#3a3a3a', signFg: '#e8e2c8', signWidth: 9, signY: 5.4, signOut: 0.1 });
+    for (const [x, name, en, c] of [[-44, 'TALLER', 'GARAGE', '#b5a58f'], [44, 'FERRETERÍA', 'HARDWARE', '#c4b69c'], [-67, 'BOTILLERÍA', 'LIQUOR STORE', '#a99f8d'], [67, 'PELUQUERÍA', 'BARBER', '#bfa58a']]) {
+      building(L, { x, z: -14, w: 20, d: 8, h: rr(6, 10), color: c, face: '+z', variant: 'shop',
+        sign: name, signSub: en, signBg: '#2a2a2a', signFg: '#f2e2b0', signWidth: 7, signY: 3.6, signOut: 0.1, accent: pick(['#7a3a2a', '#2a4a6a', '#3a5a3a']) });
+    }
+    for (const x of [-62, -40, 40, 62]) streetlight(L, x, 5.5, Math.PI);
+    parkCar(L, 52, -3.4, Math.PI / 2, '#8a3a2a'); parkCar(L, -56, 3.4, -Math.PI / 2, '#6a6a5a');
+    mesh(box(1.2, 1.2, 1.2), mat('#7a6a4a', 0.9), L.root, 62, 0.6, 8.0); L.addBox(62, 8.0, 1.2, 1.2);
+    for (const [x, z, w, d] of [[58, -6.2, 2.4, 1.1], [63, 2.6, 1.2, 2.4], [70.5, -1.5, 2.6, 1.2], [76, 4.5, 1.2, 2.2], [66, -7.5, 1.2, 1.2]]) cover(L, x, z, w, d);
+    L.zones.push({ name: 'Bodega San Pablo', minX: 56, maxX: 80, minZ: -5, maxZ: 26 }, { name: 'Avenida Matta', minX: -80, maxX: 80, minZ: -20, maxZ: 26 });
+    L.interactables.push({ type: 'use', x: 68.5, z: 8.0, r: 1.8, label: 'Load Mateo’s chemical drums', event: 'chemicals', when: (S) => S.at('pSupply') });
+    L.dangers.push({ id: 'choros', name: 'Avenida Matta', minX: 26, maxX: 40, minZ: -10, maxZ: 9, when: (S) => S.at('pAmbush'), speaker: 'Los Choros',
+      loseMsg: 'Los Choros left you bleeding on Avenida Matta — and took the drums.',
+      thugs: [{ look: 'thug', x: 31, z: -2.5, yaw: Math.PI / 2, weapon: 'knife' }, { look: 'thug2', x: 33, z: 2, yaw: Math.PI / 2 }, { look: 'rioter', x: 29.5, z: 4.5, yaw: Math.PI / 2 }],
+      barks: ['Nice drums, chicken man. Whatever is in them is ours now.', 'Los Choros run this avenue. Put them down.'], reward: 0 });
+    L.storyNpcs.push({ id: 'mateoStreet', name: 'Mateo', look: 'max', x: 4, z: 6.6, yaw: Math.PI, wander: 0.4, talk: 'mateoSupply',
+      when: (S) => S.at('pSupply') || S.at('pAmbush') });
     L.interactables.push({ type: 'door', x: 0, z: 8.6, r: 1.6, label: 'Enter Los Pollos Hermanos', to: 'pollosIn', spawn: 'entry' });
     L.spawns.street = { x: -10, z: 0, yaw: 0.6 };
     L.spawns.door = { x: 0, z: 7.4, yaw: Math.PI };
+    L.spawns.bodega = { x: 68.5, z: 6.4, yaw: -Math.PI / 2 };
     L.spawns.default = L.spawns.street;
   } else {
     // A long escape north through burning streets to Schuler's car.
@@ -623,6 +688,7 @@ function buildPollosStreet(riot) {
     L.addBox(0, -88, 2.0, 4.5);
     contactShadow(L.root, 0, -88, 1.6, 4.0, 0, 0.9);
     L.interactables.push({ type: 'use', x: 0, z: -84.6, r: 2.2, label: "Get in Schuler's car", event: 'car' });
+    for (const [x, z, w, d] of [[-4.5, -76.5, 2.6, 1.0], [4, -79, 2.2, 1.0], [-1, -73.5, 1.6, 1.0]]) cover(L, x, z, w, d, 1.2, '#7a7468');
     L.dangers.push(
       { id: 'mobA', name: 'Avenida Matta', minX: -9, maxX: 9, minZ: -40, maxZ: -30,
         thugs: [{ look: 'rioter', x: -2, z: -34, yaw: 0 }, { look: 'thug2', x: 2, z: -36, yaw: 0, weapon: 'knife' }, { look: 'rioter', x: 5, z: -33, yaw: 0 }],
@@ -630,6 +696,10 @@ function buildPollosStreet(riot) {
       { id: 'mobB', name: 'Avenida Matta', minX: -9, maxX: 9, minZ: -68, maxZ: -56,
         thugs: [{ look: 'rioter', x: 1, z: -62, yaw: 0 }, { look: 'rioter', x: -3, z: -60, yaw: 0 }],
         barks: ['There he is — the General and his chemist!', 'No more hiding, Gonzalez!'], reward: 0 },
+      { id: 'cni', name: 'Avenida Matta', minX: -9, maxX: 9, minZ: -86, maxZ: -71, guns: true, noEscape: true, speaker: 'CNI agent',
+        loseMsg: 'The CNI agents brought you down twenty metres from Schuler\u2019s car.',
+        thugs: [{ look: 'cni', x: -5.5, z: -81, yaw: 0 }, { look: 'cni', x: 5, z: -83, yaw: 0 }, { look: 'cni', x: 6.5, z: -86.5, yaw: 0 }],
+        barks: ['¡CNI! Gonzalez — Zagal — on the ground, now!', 'Víctor Díaz López sends his regards, General.'], reward: 0 },
     );
     L.zones.push({ name: 'Avenida Matta', minX: -14, maxX: 14, minZ: -95, maxZ: 26 });
     L.storyNpcs.push({ id: 'mateoRiot', name: 'Mateo', look: 'max', x: 0.5, z: 7.5, yaw: Math.PI, wander: 0, follower: true,
@@ -657,13 +727,17 @@ function buildPollosInside() {
     chair(L, x - 0.7, z, Math.PI / 2, '#f4c23b'); chair(L, x + 0.7, z, -Math.PI / 2, '#f4c23b');
   }
   L.interactables.push({ type: 'door', x: 0, z: 4.6, r: 1.4, label: 'Exit', to: 'pollos', spawn: 'door' });
+  L.interactables.push({ type: 'use', x: -1.5, z: -4.0, r: 1.3, label: 'Take the next order', event: 'counter', when: (S) => S.at('pShift') });
   L.storyNpcs.push(
+    { id: 'mateoKitchen', name: 'Mateo', look: 'max', x: -4.3, z: -4.3, yaw: 0, wander: 0.3, talk: 'mateoShift', when: (S) => S.at('pShift') },
+    { id: 'mateoDinner', name: 'Mateo', look: 'max', x: -5.2, z: 1.5, yaw: Math.PI / 2, wander: 0, sit: true, talk: 'dinner', when: (S) => S.at('pDinner') },
     { id: 'peter', name: 'Peter Schuler', look: 'peter', x: 4.1, z: 1.5, yaw: Math.PI / 2, wander: 0, sit: true, lines: ['Ah — Mr. Gonzalez.'], when: (S) => S.at('meetPeter') },
     { id: 'maxCounter', name: 'Mateo', look: 'max', x: -1.5, z: -3.9, yaw: 0, wander: 0.6, lines: ['Table in the corner, Emilio. The German. He has been waiting twenty minutes.'], when: (S) => S.at('meetPeter') },
     { id: 'waiter', name: 'Waiter', look: 'waiter', x: -4.6, z: -2.0, yaw: 0, wander: 0, talk: 'waiter' },
   );
   L.triggers.push({ id: 'peterSeen', event: 'peter', minX: 2.4, maxX: 7, minZ: -1, maxZ: 3.4, when: (S) => S.at('meetPeter') });
   L.spawns.entry = { x: 0, z: 3.6, yaw: Math.PI };
+  L.spawns.counter = { x: -1.5, z: -4.3, yaw: 0 };
   L.spawns.default = L.spawns.entry;
   L.finalize();
   return L;

@@ -17,6 +17,11 @@ export const ITEMS = {
   madrigal: { name: 'Madrigal Business Card', icon: '💼', desc: 'PETER SCHULER — Madrigal Electromotive GmbH, Hannover.\nOn the back, a Santiago phone number written in fountain pen.' },
   passportG: { name: 'Passport — Gustavo Fring', icon: '🛂', desc: 'Gustavo Fring. Restaurateur. The photo is yours. The life is not — yet.' },
   passportM: { name: 'Passport — Maximino Arciniega', icon: '🛂', desc: "Mateo's new life. He hates the photo." },
+  elenaPurse: { name: 'Doña Elena\u2019s Purse', icon: '👛', desc: 'Black leather, worn at the clasp. Heavy with a month of pension.' },
+  leaflets: { name: '¿Dónde Está? Leaflets', icon: '📃', desc: 'A grainy photo of a man taken in 1974, and three words: Where is he?\nOn the back, in your handwriting: the student\u2019s name.' },
+  pistol: { name: 'Service Pistol', icon: '🔫', desc: 'Army issue. Cleaned every Sunday, fired only on the range.\nIn a gunfight: hold Right-click / Q to aim, click / F to fire, R to reload.' },
+  revolver: { name: 'Mateo\u2019s Revolver', icon: '🔫', desc: 'His father\u2019s. Old, heavy, and it pulls to the left.\nIn a gunfight: hold Right-click / Q to aim, click / F to fire, R to reload.' },
+  chemicals: { name: 'Chemical Drums', icon: '🛢️', desc: 'Four blue drums from Bodega San Pablo. The label says cleaning fluid. It is not cleaning fluid.' },
 };
 
 // ================================================================ food (heals HP)
@@ -383,7 +388,7 @@ const SCENES = {
     for (let i = 0; i < 8; i++) d.drop('ring' + i);
     // --- Night raid in the old neighbourhood
     await d.fadeOut(0.6);
-    await d.card('1978', 'Lieutenant. His superiors call him cold. Efficient. Patient.\nHe never asks what the orders are for.', 4);
+    await d.card('1978', 'Lieutenant. His superiors call him cold. Efficient. Patient.\nHe never asks what the orders are for.\n\nVíctor Díaz López transfers to the secret police. He does not forget the barracks.', 5);
     d.set('barrio');
     G.setMood('night');
     d.prop(new THREE.PointLight('#ffcf8a', 26, 22, 1.4), -15, 4.2, 54.5);
@@ -466,6 +471,39 @@ const SCENES = {
     await sleep(d, 2.5);
     await d.fadeOut(0.8);
     await d.card('1981', 'General.\nFive years in uniform. Still living like a private. Still saving every peso.');
+  },
+
+  // Behind the barracks: Víctor Díaz López and his friends are waiting.
+  async victorTalk(d, G) {
+    G.hideHero(true);
+    const P = G.player.pos;
+    const e = d.actor('emilio', 'emilioRecruit', P.x, P.z, G.player.modelYaw);
+    const v = d.actor('victor', 'victor', -36.6, 4.6, Math.PI);
+    const f1 = d.actor('f1', 'bigRecruit', -38, 6.6, Math.PI);
+    const f2 = d.actor('f2', 'recruit', -35.2, 7, Math.PI);
+    d.face(v, e); d.face(f1, e); d.face(f2, e); d.face(e, v);
+    d.cam([P.x + 2.4, 1.8, P.z - 2.6], [-36.6, 1.4, 4.6]);
+    await d.walk(e, -36.6, Math.min(P.z, 1.6), 1.6);
+    d.face(e, v);
+    d.cam([-34.4, 1.65, 2.2], [-36.6, 1.6, 4.6]);
+    await d.say('Víctor Díaz López', 'The boy from the cerros. The sergeant’s new favourite.');
+    if (G.S.flag('bc:beatVictor')) await d.say('Víctor Díaz López', 'You made me look like a fool on the course this morning. In front of my uncle’s friends.');
+    else await d.say('Víctor Díaz López', 'Even on the course you ran behind me. Like a dog. That is your place — behind.');
+    if (G.S.flag('tomas:reported')) await d.say('Víctor Díaz López', 'And you turned in Quiroga for a piece of bread. A rat. I like rats. They know where they belong.');
+    else if (G.S.flag('tomas:covered')) await d.say('Víctor Díaz López', 'And you lie for thieves. Quiroga steals, you cover. Cerro people stick together, eh?');
+    else if (G.S.flag('tomas:partner')) await d.say('Víctor Díaz López', 'I hear you sell the bread Quiroga steals. Six weeks in and already a businessman.');
+    d.cam([-37.8, 1.6, 2.4], [-36.6, 1.55, 1.6]);
+    const c = await d.choose(['"Say what you came to say."', '"Your uncle cannot help you back here."', 'Say nothing. Wait.'], 0, 'Víctor Díaz López');
+    if (c === 0) await d.say('Emilio', 'Say what you came to say, Díaz López. I have boots to polish.');
+    else if (c === 1) await d.say('Emilio', 'Your uncle is a colonel. Back here, you are just a boy with soft hands.');
+    else await d.say('', '*You say nothing. You have learned that silence makes men like him talk more.*');
+    d.cam([-34.4, 1.65, 2.2], [-36.6, 1.6, 4.6]);
+    await d.say('Víctor Díaz López', 'Men like me become generals, cerro. Men like you clean up after us.');
+    await d.say('Víctor Díaz López', 'Let’s make sure you remember it.');
+    d.pose(v, 'guard', 1, 0.2); d.pose(f1, 'guard', 1, 0.2); d.pose(f2, 'guard', 1, 0.2); d.pose(e, 'guard', 1, 0.2);
+    await sleep(d, 0.6);
+    G.placePlayer(e.pos.x, e.pos.z, e.yaw);
+    G.hideHero(false);
   },
 
   // ---------------------------------------------------------- Chapter II
@@ -794,6 +832,7 @@ const SCENES = {
     d.cam([-6.8, 1.8, -2.6], [-9, 1.4, -4.2]);
     await sleep(d, 1.5);
     G.take('idcard');
+    G.take('pistol');
     await d.fadeOut(0.8);
     await d.card('March 1982', 'Emilio Gonzalez leaves the army with a medical discharge —\nand almost every peso he has ever earned.');
   },
@@ -819,8 +858,7 @@ const SCENES = {
     await d.say('Mateo', '*laughs* Los Pollos Hermanos. Two brothers.');
     await d.say('Emilio', 'Two brothers. One cooks the chicken. One cooks… the chicken.');
     await sleep(d, 0.8);
-    await d.say('Mateo', 'Emilio — there is a man inside asking for you by name. A German. Expensive shoes. He has been here four times this month.');
-    await d.say('Emilio', '…Then I suppose he likes the chicken.');
+    await d.say('Mateo', 'Now go put on an apron, Señor Gonzalez. The lunch rush waits for nobody.');
   },
 
   async peter(d, G) {
@@ -1226,10 +1264,187 @@ export const CONVOS = {
       opts[c].used = true;
     }
   },
+  // ---------------------------------------------------------- boot camp (Regimiento Tacna)
+  async sergeant(T, G, S) {
+    if (S.at('bcReport')) {
+      await T.say('Sargento Muñoz', '¡Gonzalez! The boy from the cerros. You are late — by eleven seconds.');
+      await T.say('Emilio', 'Sí, mi Sargento.');
+      await T.say('Sargento Muñoz', 'Today: the course. Around both barracks, behind them, along the north fence and back to me. Under fifty-two seconds.');
+      await T.say('Sargento Muñoz', 'Díaz López runs with you. His uncle is a colonel, so he thinks he is already an officer. Make him sweat.');
+      G.emit('bc:report');
+      return;
+    }
+    if (S.at('bcCourse')) {
+      if (G.ow.run) return;
+      await T.say('Sargento Muñoz', 'Follow the markers. Run — hold Shift — and do not stop for anything. Ready, recruit?');
+      const c = await T.choice(['"Ready."', '"Not yet, mi Sargento."'], 'The course');
+      if (c !== 0) { await T.say('Sargento Muñoz', 'The enemy will not wait for you to be ready. Neither will I. Come back fast.'); return; }
+      G.ow.startRun({
+        label: 'Obstacle course', time: 52, noRivalLose: true, rival: { look: 'victor', name: 'Víctor', time: 46 },
+        points: [[-16, -15], [-36, -15], [-36, 32], [0, 35], [36, 32], [36, -15], [4, 2]],
+        onWin: (r) => {
+          if (r.beatRival) { G.setFlag('bc:beatVictor'); G.ui.toast(`${r.time.toFixed(1)} s — ahead of Víctor`, '¡Así se hace!'); }
+          else G.ui.toast(`${r.time.toFixed(1)} s — Víctor beat you`, 'Course passed');
+          G.emit('bc:course');
+        },
+        onLose: (why) => { if (why === 'time') G.ui.toast('Too slow, Gonzalez! Talk to the sergeant and run it again.', 'Failed', true); },
+      });
+      return;
+    }
+    if (S.at('bcRations')) {
+      await T.say('Sargento Muñoz', S.flag('bc:beatVictor') ? 'Not bad. You beat a colonel’s nephew. He will not thank you for it.' : 'You passed. Barely. Díaz López is telling everyone he waited for you at the finish.');
+      await T.say('Sargento Muñoz', 'Now. Bread is disappearing from the mess every night. Find out who. Quietly. The mess tables, by the west barracks.');
+      return;
+    }
+    if (S.at('bcVictor')) {
+      await T.say('Sargento Muñoz', 'Díaz López was asking where you were. Behind the west barracks, he said.');
+      await T.say('Sargento Muñoz', '…I did not hear that, and I will not hear anything that happens back there. Understood, recruit?');
+      return;
+    }
+    await T.say('Sargento Muñoz', '¡Muévase, recluta!');
+  },
+  async tomas(T, G, S) {
+    if (!S.at('bcRations')) {
+      if (S.flag('tomas:covered')) { await T.say('Tomás Quiroga', 'I owe you, Gonzalez. Quiroga pays his debts. Always.'); return; }
+      if (S.flag('tomas:partner')) { await T.say('Tomás Quiroga', 'Two loaves tonight. Same as yesterday. Your half is under your mattress.'); return; }
+      await T.say('Tomás Quiroga', 'Tomás. From Temuco. My mother thinks the army feeds you like a king. *He laughs. It is not funny.*');
+      return;
+    }
+    await T.say('', '*Tomás jumps when he sees you. There is a lump under his shirt the size of a loaf of bread.*');
+    await T.say('Tomás Quiroga', 'Gonzalez. It’s not… My mother and three sisters, in Temuco. Half my pay goes home and it is still not enough.');
+    await T.say('Tomás Quiroga', 'Two loaves a night. Nobody even counts them. Please.');
+    const c = await T.choice(['"I have to report you."', '"The dogs got into the mess. That is what I will tell the sergeant."', '"Steal four. I sell the extra in town. We split it."'], 'Tomás Quiroga');
+    if (c === 0) {
+      await T.say('Emilio', 'Rules are what keep men like us alive, Tomás. I am sorry.');
+      await T.say('Tomás Quiroga', '*He does not argue. He just looks at you, the way the cerro looks at soldiers.*');
+      G.setFlag('tomas:reported'); G.stat('fear');
+    } else if (c === 1) {
+      await T.say('Tomás Quiroga', '…I won’t forget this, Gonzalez. Never.');
+      G.setFlag('tomas:covered'); G.stat('mercy');
+    } else {
+      await T.say('Tomás Quiroga', 'You… want to sell it?');
+      await T.say('Emilio', 'Bread is worth more outside the fence than inside. You take the risk; I find the buyers. Your sisters eat. So do I.');
+      await T.say('Tomás Quiroga', '*He laughs, nervously.* You are a strange one, cerro.');
+      G.addPesos(120, 'Your half of the bread');
+      G.setFlag('tomas:partner');
+    }
+    G.emit('bc:rations');
+    G.refresh();
+  },
+  async victorIdle(T) {
+    await T.say('Víctor Díaz López', 'You. Cerro. Do you know who my uncle is?');
+    await T.say('Emilio', 'Everyone knows who your uncle is. You make sure of it.');
+    await T.say('Víctor Díaz López', '*His smile goes thin.* We will talk later, you and I.');
+  },
+
+  // ---------------------------------------------------------- Los Pollos Hermanos (Mateo)
+  async mateoShift(T, G, S) {
+    const n = S.stat('shiftN');
+    await T.say('Mateo', n === 0 ? 'Two hands, Emilio! The counter. Take the order, say it back, get it right. Like a requisition, but with napkins.' : 'Keep going! Smile — no, not like that. Like a human being.');
+  },
+  async counter(T, G, S) {
+    if (counterBusy || S.stat('shiftN') >= SHIFT_ORDERS.length) return;
+    counterBusy = true;
+    try {
+      const order = SHIFT_ORDERS[S.stat('shiftN')];
+      const a = G.ow.addWalker(G.randomLook(), 0, 4.2, Math.PI);
+      G.ow.walkTo(a, 3.15, 3.0, 3).then(() => G.ow.walkTo(a, 3.15, 0, 3)).then(() => G.ow.walkTo(a, -1.5, -1.95, 3)).then(() => { a.faceTo = G.player.pos; });
+      await T.say('', '*The bell over the door rings. A customer walks up to the counter.*');
+      await T.say('Customer', order.say);
+      const wrong = SHIFT_ORDERS.filter((o) => o !== order).sort(() => Math.random() - 0.5).slice(0, 2).map((o) => o.answer);
+      const opts = [order.answer, ...wrong].sort(() => Math.random() - 0.5);
+      const c = await T.choice(opts, 'Ring it up');
+      if (opts[c] === order.answer) {
+        G.addPesos(order.price, 'Sale');
+        G.stat('shiftGood');
+        await T.say('Customer', pickLine(['¡Perfecto! Gracias.', 'Smells like my grandmother’s kitchen.', 'Fast! Like a soldier.']));
+      } else {
+        await T.say('Customer', '¿Qué? That is not what I asked for.');
+        await T.say('Emilio', 'My apologies. It is on the house. *You fix it. It hurts.*');
+      }
+      G.stat('shiftN');
+      G.ow.walkTo(a, 3.15, 0, 2.2).then(() => G.ow.walkTo(a, 3.15, 3.0, 2.2)).then(() => G.ow.walkTo(a, 0, 4.4, 2.2)).then(() => G.ow.dropWalker(a));
+      if (S.stat('shiftN') >= SHIFT_ORDERS.length) {
+        const good = S.stat('shiftGood');
+        await T.say('Mateo', good >= 5 ? '¡Cinco de cinco! Emilio, you were born behind a counter.' : good >= 3 ? `${good} of five. For a General, not bad. For a chicken man, we will practice.` : 'Emilio. You gave a man a drink when he asked for chicken. Twice.');
+        if (good >= 4) G.stat('bond');
+        await T.say('Mateo', 'Now — the real work. I need chemicals, and I don’t want them delivered here. Come outside.');
+        G.emit('p:shift');
+      } else G.emit('order');
+    } finally { counterBusy = false; }
+  },
+  async chemicals(T, G, S) {
+    if (!S.at('pSupply')) return;
+    await T.say('Don Beto', 'Ah — the cleaning fluid. For the restaurant, eh? *He winks. He does not ask.*');
+    await T.say('', '*Four blue drums. You roll them onto a hand truck. Every eye on Avenida Matta follows you.*');
+    G.give('chemicals');
+    G.emit('chemicals');
+  },
+  async mateoSupply(T, G, S) {
+    if (S.at('pSupply')) {
+      await T.say('Mateo', 'Bodega San Pablo, at the east end. Don Beto thinks it is cleaning fluid. Let him think it.');
+      await T.say('Mateo', 'And Emilio — Los Choros have been watching the avenue. A crew. Kids with knives. Be careful.');
+      return;
+    }
+    if (!S.at('pAmbush')) return;
+    await T.say('Mateo', 'Emilio! Your shirt — is that blood? Los Choros?');
+    await T.say('Emilio', 'Someone told them what was in the drums. They were waiting.');
+    const c = await T.choice(['"From now on, I make the runs. Not you. Never you."', '"Find out who talked. Then tell me. Only me."', '"You should have come with me."'], 'Mateo');
+    if (c === 0) { await T.say('Mateo', '…You would do that? For me?'); await T.say('Emilio', 'You are the only one who can cook. That is all.'); await T.say('Mateo', '*He smiles. He doesn’t believe that is all.*'); G.stat('bond', 2); }
+    else if (c === 1) { await T.say('Mateo', 'And then what will you do to him?'); await T.say('Emilio', 'Whatever is necessary.'); G.stat('fear'); }
+    else { await T.say('Mateo', 'I am a chemist, Emilio, not a boxer.'); await T.say('Emilio', 'Then learn. Or stay inside.'); G.stat('bond', -1); }
+    G.take('chemicals');
+    await T.say('Mateo', '*He takes something wrapped in a dish towel from under the counter.* My father\u2019s revolver. After today, I want you to carry it.');
+    await T.say('Emilio', 'I have not carried a gun since the army.');
+    await T.say('Mateo', 'And look how peaceful your life has been since then.');
+    G.give('revolver');
+    G.emit('talk:mateoSupply');
+  },
+  async dinner(T, G, S) {
+    await T.say('', '*Closing time. The chairs are up on every table but one. Two plates of pollo asado. Two glasses of cheap wine.*');
+    await T.say('Mateo', 'Sit, sit. Our chicken. Our table. Our first good day.');
+    await T.say('Mateo', 'Three years I have known you, Emilio, and I don’t know where you grew up. You never say.');
+    const opts = ['Tell him about Cerro Barón — and Mamá', '"Nowhere worth remembering."'];
+    const c1 = await T.choice(opts, 'Mateo');
+    if (c1 === 0) {
+      await T.say('Emilio', 'Valparaíso. Cerro Barón. A tin roof. My mother counted coins at the table every night — rent, food, nothing.');
+      await T.say('Emilio', 'Once I threw an orange at a coati that was stealing from us. It was our dinner. She told me she had already eaten.');
+      await T.say('Emilio', 'She had not eaten.');
+      if (G.has('photo')) await T.say('', '*You put the photo of Mamá on the table. Mateo turns it over and reads the recipe on the back.*');
+      await T.say('Mateo', '…This is her chicken. We have been selling your mother’s chicken.');
+      await T.say('Emilio', 'Yes.');
+      G.stat('bond', 2); G.setFlag('told:cerro');
+    } else {
+      await T.say('Mateo', '*He waits for more. There is no more.* …One day you will tell me.');
+    }
+    await T.say('Mateo', 'And when this is over — when we have enough — what then?');
+    const c2 = await T.choice(['"Then we stop."', '"There is no such thing as enough."', '"Then you cook for people who deserve it."'], 'Mateo');
+    if (c2 === 0) await T.say('Mateo', 'You say it like a man who has already decided not to.');
+    else if (c2 === 1) { await T.say('Mateo', '*He puts his fork down.* That is the regime talking, Emilio. Not you.'); G.stat('fear'); }
+    else { await T.say('Mateo', 'La Victoria. A kitchen where nobody pays. *He laughs.* You are a romantic, General.'); G.stat('bond'); }
+    await T.say('Mateo', '*He raises his glass.* A los hermanos.');
+    const c3 = await T.choice(['"A los hermanos."', '"To the business."'], 'The toast');
+    if (c3 === 0) { await T.say('', '*The glasses touch. For a moment, neither of you is from anywhere.*'); G.stat('bond'); }
+    else await T.say('Mateo', '…To the business, then.');
+    await T.say('Mateo', 'Oh — Emilio. The German was here again today. Expensive shoes. Fourth time this month. He asked for you by name.');
+    await T.say('Emilio', '…Then I suppose he likes the chicken.');
+    await T.say('', '*Three weeks later.*');
+    G.emit('talk:dinner');
+  },
 };
 
+const SHIFT_ORDERS = [
+  { say: 'Un cuarto de pollo y papas fritas, por favor. (A quarter chicken and fries.)', answer: 'Quarter chicken + fries — $ 1.200', price: 1200 },
+  { say: 'El Combo Hermanos. And a smile, if you have one.', answer: 'Combo Hermanos — $ 1.300', price: 1300 },
+  { say: 'Just a bebida, señor. I only came in for the shade.', answer: 'One drink — $ 200', price: 200 },
+  { say: 'Two quarters of chicken. My husband eats like a horse.', answer: 'Two quarter chickens — $ 1.800', price: 1800 },
+  { say: 'Papas fritas. Double. Don’t tell my doctor.', answer: 'Double fries — $ 600', price: 600 },
+];
+let counterBusy = false;
+const pickLine = (a) => a[Math.floor(Math.random() * a.length)];
+
 // Which conversation a "use" spot opens.
-export const USE_CONVOS = { ticket: 'ticket', ledger: 'ledger', plan_board: 'launder' };
+export const USE_CONVOS = { ticket: 'ticket', ledger: 'ledger', plan_board: 'launder', counter: 'counter', chemicals: 'chemicals' };
 
 // ================================================================ beats
 const SHOPS = [{ id: 'ernesto', x: -8.1, z: -29.75 }, { id: 'ines', x: -8.1, z: -17.25 }, { id: 'jacobo', x: 8.1, z: 44 }];
@@ -1241,6 +1456,7 @@ function nearestShop(S) {
 }
 const CH0 = 'Prologue · Valparaíso, 1964';
 const CH1 = 'Chapter I · Cerro Barón';
+const CH1B = 'Chapter I · Regimiento Tacna';
 const CH2 = 'Chapter II · The General';
 const CH3 = 'Chapter III · Los Pollos Hermanos';
 const CH4 = 'Chapter IV · Blood in the Streets';
@@ -1257,6 +1473,18 @@ export const BEATS = [
     target: { loc: 'barrio', x: 48, z: -71.6 }, done: (e) => e === 'board' },
   { id: 'train', type: 'scene', chapter: CH1, play: SCENES.train },
   { id: 'enlist', type: 'scene', chapter: CH1, play: SCENES.enlist },
+  // ---- boot camp (playable)
+  { id: 'bcReport', type: 'goal', chapter: CH1B, look: 'emilioRecruit', text: 'Report to Sargento Muñoz on the parade ground', loc: 'cuartel', spawn: 'yard',
+    target: { loc: 'cuartel', x: 4, z: 4.8 }, done: (e) => e === 'bc:report', banner: true },
+  { id: 'bcCourse', type: 'goal', chapter: CH1B, look: 'emilioRecruit', text: 'Run the obstacle course in under 52 seconds — talk to the sergeant to start', loc: 'cuartel', spawn: 'yard',
+    target: { loc: 'cuartel', x: 4, z: 4.8 }, done: (e) => e === 'bc:course' },
+  { id: 'bcRations', type: 'goal', chapter: CH1B, look: 'emilioRecruit', text: 'Bread is going missing from the mess. Find out who — the mess tables by the west barracks', loc: 'cuartel', spawn: 'yard',
+    target: { loc: 'cuartel', x: -18.2, z: 17.8 }, done: (e) => e === 'bc:rations' },
+  { id: 'bcVictor', type: 'goal', chapter: CH1B, look: 'emilioRecruit', text: 'Víctor Díaz López wants a word — behind the west barracks', loc: 'cuartel', spawn: 'yard',
+    target: { loc: 'cuartel', x: -36.5, z: 1.5 }, done: (e) => e === 'bc:behind' },
+  { id: 'victorTalk', type: 'scene', chapter: CH1B, play: SCENES.victorTalk, inPlace: true },
+  { id: 'bcFight', type: 'goal', chapter: CH1B, look: 'emilioRecruit', text: 'Fight Víctor Díaz López and his friends', loc: 'cuartel', spawn: 'keep',
+    target: { loc: 'cuartel', x: -36.6, z: 4.6 }, done: (e) => e === 'won:bcVictor' },
   { id: 'rise', type: 'scene', chapter: CH2, play: SCENES.rise },
   { id: 'wake2', type: 'scene', chapter: CH2, play: SCENES.wake2 },
   { id: 'getId', type: 'goal', chapter: CH2, look: 'general', text: 'Take your service ID from the table', loc: 'house2', spawn: 'table',
@@ -1288,6 +1516,16 @@ export const BEATS = [
   { id: 'launder', type: 'goal', chapter: CH3, look: 'emilioCivil', text: 'Use the board to choose a front for laundering the money', loc: 'house2', spawn: 'door',
     target: { loc: 'house2', x: 0.9, z: -2.4 }, done: (e) => e === 'laundered' },
   { id: 'opening', type: 'scene', chapter: CH3, play: SCENES.opening },
+  // ---- the partnership (playable)
+  { id: 'pShift', type: 'goal', chapter: CH3, look: 'emilioCivil', loc: 'pollosIn', spawn: 'counter', banner: true,
+    text: (S) => `Lunch rush: take the orders at the counter (${S.stat?.('shiftN') || 0}/5)`,
+    target: { loc: 'pollosIn', x: -1.5, z: -4.0 }, done: (e) => e === 'p:shift' },
+  { id: 'pSupply', type: 'goal', chapter: CH3, look: 'emilioCivil', text: 'Pick up Mateo\u2019s chemical drums at Bodega San Pablo, the east end of Avenida Matta', loc: 'pollos', spawn: 'door',
+    target: { loc: 'pollos', x: 68.5, z: 8.2 }, done: (e) => e === 'chemicals' },
+  { id: 'pAmbush', type: 'goal', chapter: CH3, look: 'emilioCivil', text: 'Bring the drums back to Mateo outside Los Pollos', loc: 'pollos', spawn: 'bodega',
+    target: { loc: 'pollos', x: 4, z: 6.6 }, done: (e) => e === 'talk:mateoSupply' },
+  { id: 'pDinner', type: 'goal', chapter: CH3, look: 'emilioCivil', text: 'Close up for the night — have dinner with Mateo', loc: 'pollosIn', spawn: 'entry',
+    target: { loc: 'pollosIn', x: -4.5, z: 1.5 }, done: (e) => e === 'talk:dinner' },
   { id: 'meetPeter', type: 'goal', chapter: CH3, look: 'emilioCivil', text: 'Meet the German investor inside Los Pollos Hermanos', loc: 'pollos', spawn: 'door',
     target: { loc: 'pollosIn', x: 4.8, z: 1.6 }, done: (e) => e === 'peter' },
   { id: 'peterScene', type: 'scene', chapter: CH3, play: SCENES.peter, inPlace: true },

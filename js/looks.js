@@ -57,6 +57,20 @@ export const LOOKS = {
   cartel: { skin: '#b07a52', shirt: '#e8e0cf', pants: '#3a3a40', shoes: '#4a3526', hairStyle: 'hat', hatColor: '#c9b48a', hair: '#1c1c1c',
     beard: 'mustache', build: 1.12 },
   waiter: { skin: '#c68a62', shirt: '#f2c230', pants: '#2a2a2e', shoes: '#1a1a1a', hairStyle: 'hat', hatColor: '#b52a1c', hair: '#1c1c1c', sleeves: 'short' },
+  // ---- open-world characters
+  landlord: { skin: '#c68a62', shirt: '#8a7a5a', pants: '#3a3226', shoes: '#2a2a2a', hairStyle: 'hat', hatColor: '#5a4a3a', hair: '#8a8a8a',
+    beard: 'mustache', beardColor: '#9a9a9a', build: 1.15, height: 0.97 },
+  baker: { skin: '#e0b08f', shirt: '#f2efe6', pants: '#5a5248', shoes: '#2a2a2a', hairStyle: 'hat', hatColor: '#f2efe6', hair: '#5a5a5a', build: 1.25, height: 0.96 },
+  kidRunner: { skin: '#b07a52', shirt: '#2e86c1', pants: '#3a3226', shoes: '#2a2a2a', hairStyle: 'short', hair: '#151515', height: 0.72, build: 0.78, sleeves: 'short' },
+  oldWoman: { skin: '#d9a57f', shirt: '#3a3a52', pants: '#2a2a3a', shoes: '#1a1a1a', hairStyle: 'long', hair: '#c8c8c8', build: 0.9, height: 0.9 },
+  thiefKid: { skin: '#9a6844', shirt: '#7a7a6a', pants: '#3a3a40', shoes: '#2a2a2a', hairStyle: 'beanie', hatColor: '#2d2d30', height: 0.82, build: 0.8, sleeves: 'short' },
+  cabo: { skin: '#c68a62', shirt: ARMY, pants: ARMY, shoes: '#111111', hairStyle: 'shaved', hair: '#1c1c1c', build: 0.98, sleeves: 'short', pockets: true },
+  student: { skin: '#e0ac85', shirt: '#4f6a7f', pants: '#2c3440', shoes: '#3a2a1c', hairStyle: 'long', hair: '#2a1c14', glasses: true, build: 0.88 },
+  victor: { skin: '#e8bf9f', shirt: '#6a6f52', pants: ARMY, shoes: '#111111', hairStyle: 'short', hair: '#2a1c14', beard: 'mustache', beardColor: '#2a1c14',
+    sleeves: 'short', build: 1.1, height: 1.05, pockets: true },
+  cni: { skin: '#d9a57f', shirt: '#2a2a30', pants: '#2a2a30', shoes: '#111111', hairStyle: 'short', hair: '#1c1c1c', glasses: true,
+    tie: '#1a1a1a', beard: 'mustache', build: 1.08 },
+  tomas: { skin: '#b97f58', shirt: '#6a6f52', pants: ARMY, shoes: '#111111', hairStyle: 'shaved', hair: '#1c1c1c', sleeves: 'short', build: 0.8, height: 0.98, pockets: true },
 };
 
 const SKINS = ['#e0ac85', '#c68a62', '#9a6844', '#b07a52', '#d9a57f', '#8a5a3c'];
