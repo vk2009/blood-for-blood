@@ -2,7 +2,10 @@
 import { translate, translateHud, translateName } from './i18n.js';
 export { translateHud, translateName };
 const $ = (id) => document.getElementById(id);
-export const fmtPesos = (n) => Math.round(n).toLocaleString('es-CL');
+let currency = 'pesos';
+// Chile writes 812.400; Albuquerque writes 812,400
+export const fmtPesos = (n) => Math.round(n).toLocaleString(currency === 'dollars' ? 'en-US' : 'es-CL');
+export const fmtMoney = (n) => (currency === 'dollars' ? '$' : '$ ') + fmtPesos(n);
 
 // ---------------------------------------------------------------- saves
 // v2 saves (open-world branch): older saves point at different story beats.
@@ -162,7 +165,7 @@ export class UI {
     $('boss-name').textContent = name;
     $('boss-fill').style.width = `${Math.max(0, Math.min(1, k)) * 100}%`;
   }
-  setCurrency(label) { document.querySelector('#money small').textContent = label; }
+  setCurrency(label) { currency = label; document.querySelector('#money small').textContent = label; }
   showCard(title, sub = '') {
     this.el.cardTitle.textContent = title;
     this.el.cardSub.textContent = sub;
@@ -273,7 +276,7 @@ export class InventoryPanel {
     if (e?.kind === 'food') this.onEat?.(e.id);
   }
   render() {
-    this.root.querySelector('.inv-money').textContent = `$ ${fmtPesos(this.pesos)} · ❤ ${Math.round(this.hp)}/100`;
+    this.root.querySelector('.inv-money').textContent = `${fmtMoney(this.pesos)} · ❤ ${Math.round(this.hp)}/100`;
     this.list.innerHTML = '';
     const big = this.detail.querySelector('.inv-icon-big'), h3 = this.detail.querySelector('h3'), p = this.detail.querySelector('p');
     this.detail.querySelector('.eat')?.remove();

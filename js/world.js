@@ -762,6 +762,7 @@ function buildAirstrip() {
   const car = createCar('#1a1a1e', 'sedan');
   car.position.set(14, 0, 8); car.rotation.y = -0.4;
   L.root.add(car);
+  L.spawns.default = { x: 4, z: 14, yaw: Math.PI };   // cutscene-only, but never leave it without a spawn
   return L;
 }
 
@@ -1020,7 +1021,7 @@ function buildRanch() {
   parkCar(L, -20, 36, 0.3, '#1a1a1e', 'suv'); parkCar(L, 20, 34, -0.2, '#e8e8e4', 'suv');
   for (const [x, z] of [[-6, 22], [6, 20], [-12, -18], [12, -21], [0, -24]]) addPropane(L, x, z);
   for (const [i, [x, z]] of [[-24, 38], [24, 38], [-20, 0], [20, 6], [-6, -26], [6, -26]].entries()) barrelFire(L, x, z, i % 2 === 0);
-  lampPost(L, 0, 42, true);
+  lampPost(L, 4.5, 44, true);   // beside the gate, not on the spawn point
   L.zones.push(
     { name: 'The Gate', minX: -42, maxX: 42, minZ: 8, maxZ: 46 },
     { name: 'The Sheds', minX: -42, maxX: -26, minZ: -24, maxZ: 26 }, { name: 'The Sheds', minX: 26, maxX: 42, minZ: -24, maxZ: 26 },

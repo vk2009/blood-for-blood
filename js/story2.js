@@ -657,7 +657,7 @@ export const CONVOS2 = {
   async clueDealer(T, G, S) {
     if (S.flag('clue:dealer')) { await T.say('Salamanca dealer', 'I told you everything, man!'); return; }
     await T.say('Salamanca dealer', 'I don’t know nothing about no twins.');
-    const c = await T.choice(['Pay him ($ 2,000)', 'Remind him what happened to the tire shop'], 'Salamanca dealer');
+    const c = await T.choice(['Pay him ($2,000)', 'Remind him what happened to the tire shop'], 'Salamanca dealer');
     if (c === 0) { if (G.pesos < 2000) { await T.say('Gustavo', '(Not enough on me.)'); return; } G.addPesos(-2000, 'Information'); }
     else G.empire.apply({ fear: 4 }, 'A reminder');
     await T.say('Salamanca dealer', 'Okay, okay! Leonel and Marco. Tuco’s cousins. They’re waiting for the teacher at the Desert Sands. Tonight. They’re gonna do it in the lot.');
@@ -685,7 +685,9 @@ export function shedUses() {
   }));
 }
 function startBombHunt(G) {
-  const st = { t: 95, bomb: Math.floor(Math.random() * SHEDS.length), searched: new Set(), tickT: 0, done: false };
+  const bonus = G.empire?.bombBonus() || 0;
+  if (bonus) G.ui.toast(bonus > 0 ? 'Reputation: Mike’s informant narrowed it down. +15 seconds.' : 'Heat: the DEA is tailing you and slowed you down. −15 seconds.', 'Your empire', bonus < 0);
+  const st = { t: 95 + bonus, bomb: Math.floor(Math.random() * SHEDS.length), searched: new Set(), tickT: 0, done: false };
   G.bomb = st;
   const timer = document.getElementById('ow-timer');
   timer.classList.add('show');

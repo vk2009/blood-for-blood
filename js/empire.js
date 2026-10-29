@@ -4,7 +4,7 @@
 // Hermanos. Each week costs payroll and the cartel's cut; neglect shows up as
 // a DEA raid (heat), a mutiny (no reputation and no fear) or a bullet.
 import { sfx } from './sfx.js';
-import { fmtPesos } from './ui.js';
+import { fmtMoney } from './ui.js';
 
 export const EMPIRE_START = {
   rep: 35, product: 30, fear: 20, heat: 10,
@@ -22,8 +22,10 @@ export const CREW = {
   saul: { name: 'Saul Goodman', perk: 'Launders the money: +15% income, cheaper pay-offs.' },
 };
 const MAX_MOVES = 2;
+// Chapter IV fights where the empire you built changes the odds
+const WAR_FIGHTS = new Set(['twins1', 'twins2', 'bolsaVilla', 'truckAmbush', 'eladioDrive', 'eladioBoss', 'ranchGate', 'ranchHector']);
 const clamp = (n) => Math.max(0, Math.min(100, Math.round(n)));
-const usd = (n) => `$ ${fmtPesos(n)}`;
+const usd = fmtMoney;
 
 export class Empire {
   constructor(G, state) {
@@ -204,6 +206,45 @@ export class Empire {
     if ((e === 'empire:changed' || e === 'empire:week') && this.G.S.at('empire') && this.ready()) this.G.emit('empire:ready');
   }
 
+  // ---------------------------------------------------------------- Chapter IV: the war
+  // Fear thins (or swells) the enemy's numbers, reputation gets you patched up
+  // before a fight, heat and reputation move the bomb timer at the ranch.
+  atWar() { return !!this.E && this.G.S.past('empire'); }
+  bombBonus() {
+    const E = this.E;
+    if (!E) return 0;
+    return (E.rep >= 50 ? 15 : 0) - (E.heat >= 70 ? 15 : 0);
+  }
+  warLines() {
+    const E = this.E;
+    if (!E) return [];
+    return [
+      E.fear >= 50 ? 'Fear 50+ ✓ their last wave stays home' : E.fear < 25 ? 'Fear under 25 ✗ they send an extra wave' : 'Fear 50+ → their last wave stays home',
+      E.rep >= 50 ? 'Reputation 50+ ✓ full health before each fight' : 'Reputation 50+ → full health before each fight',
+      E.heat >= 70 ? 'Heat 70+ ✗ the DEA tails you: −15s on the bomb' : 'Keep heat under 70 or lose 15s on the bomb',
+    ];
+  }
+  shapeFight(d) {
+    const E = this.E, G = this.G;
+    if (!E || !WAR_FIGHTS.has(d.id)) return d;
+    const out = { ...d };
+    const notes = [];
+    if (d.waves?.length && E.fear >= 50) {
+      out.waves = d.waves.slice(0, -1);
+      notes.push(`Fear ${E.fear}: word of what you do travels — some of their men stayed home.`);
+    } else if (d.waves?.length && E.fear < 25) {
+      out.waves = [...d.waves, d.waves[d.waves.length - 1]];
+      notes.push(`Fear ${E.fear}: nobody fears you — they brought extra men.`);
+    }
+    if (E.rep >= 50 && G.player.hp < 100) {
+      G.player.hp = 100;
+      G.ui.setHealth(1);
+      notes.push(`Reputation ${E.rep}: your people patched you up before this.`);
+    }
+    if (notes.length) G.ui.toast(notes.join(' '), 'Your empire', E.fear < 25);
+    return out;
+  }
+
   // ---------------------------------------------------------------- HUD
   render() {
     const E = this.E, G = this.G;
@@ -215,10 +256,14 @@ export class Empire {
       const warn = k === 'heat' ? v >= 75 : (k === 'rep' || k === 'fear') ? v < 20 : false;
       return `<div class="er${warn ? ' warn' : ''}"><span>${label}</span><i><u style="width:${v}%;background:${color}"></u></i><em>${v}</em></div>`;
     }).join('');
-    const key = html + E.week + E.moves;
+    const war = this.atWar() ? this.warLines() : null;
+    const foot = war
+      ? `<small class="war">${war.join('<br>')}</small>`
+      : `<small>Ledger: desk in your office at Los Pollos · moves left ${MAX_MOVES - E.moves}</small>`;
+    const key = html + E.week + E.moves + foot;
     if (key === this.lastKey) return;
     this.lastKey = key;
-    this.el.innerHTML = `<h4><span>Empire</span><span>Week ${E.week}</span></h4>${html}<small>Ledger: desk in your office at Los Pollos · moves left ${MAX_MOVES - E.moves}</small>`;
+    this.el.innerHTML = `<h4><span>Empire</span><span>${war ? 'At war' : 'Week ' + E.week}</span></h4>${html}${foot}`;
   }
   update() { this.render(); }
 }

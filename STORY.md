@@ -347,3 +347,10 @@ The theme of everything after the pool is **revenge for Max**. The empire exists
   - Loading a save inside a fight zone now offers "E Fight…".
   - The obstacle course now has three shooting stations.
   - The hacienda pool is visible.
+
+**Chapter IV uses the empire stats.** The Empire panel stays on screen and shows "At war". In the Chapter IV fights (twins, Juan Bolsa, the truck ambush, Eladio's drive and boss, Hector's gate and courtyard):
+- **Fear 50+:** the enemy's last wave stays home.
+- **Fear under 25:** they send an extra wave.
+- **Reputation 50+:** Gus starts each fight at full health.
+- **Ranch bomb timer:** reputation 50+ adds 15 seconds (Mike's informant). Heat 70+ takes 15 seconds off (the DEA is tailing him).
+The journal lists which of these are active.

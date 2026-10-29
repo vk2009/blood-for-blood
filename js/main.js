@@ -15,7 +15,7 @@ import { LOOKS, PED_LINES, randomLook } from './looks.js';
 import { Director, Actor } from './director.js';
 import { Brawl, PLAYER_HP } from './combat.js';
 import { BEATS, BEAT_INDEX, CONVOS, USE_CONVOS, ITEMS, FOODS } from './story.js';
-import { UI, Talk, InventoryPanel, Saves, describeSave, fmtPesos, translateName } from './ui.js';
+import { UI, Talk, InventoryPanel, Saves, describeSave, fmtPesos, fmtMoney, translateName } from './ui.js';
 import { waveFlags, flickerFires } from './props.js';
 import { sfx } from './sfx.js';
 import { OpenWorld } from './openworld.js';
@@ -311,10 +311,10 @@ const G = {
   randomLook,
   showLoc: (id) => showLoc(id),
   setMood(m) { moodOverride = m; if (loc) applyEnv(); },
-  setPesos(n, why) { state.pesos = n; ui.setMoney(n, true); if (why) ui.toast(`$ ${fmtPesos(n)}`, why); sfx.coin(); },
+  setPesos(n, why) { state.pesos = n; ui.setMoney(n, true); if (why) ui.toast(fmtMoney(n), why); sfx.coin(); },
   addPesos(n, why) {
     state.pesos = Math.max(0, state.pesos + n); ui.setMoney(state.pesos, true);
-    ui.toast(`${n < 0 ? '−' : '+'} $ ${fmtPesos(Math.abs(n))}`, why || (n < 0 ? 'Spent' : 'Received'), n < 0);
+    ui.toast(`${n < 0 ? '−' : '+'} ${fmtMoney(Math.abs(n))}`, why || (n < 0 ? 'Spent' : 'Received'), n < 0);
     sfx.coin();
   },
   give(id, toast = true) {
@@ -474,7 +474,7 @@ function startBeat(i, from = null) {
   const b = BEATS[i];
   if (!b) return;
   ui.prompt(null);
-  ui.setCurrency(S.past('burial') ? 'dollars' : 'pesos');
+  ui.setCurrency(S.past('burial') ? 'dollars' : 'pesos'); ui.setMoney(state.pesos);
   invPanel.emptyText = S.past('newNames') ? 'Gustavo keeps nothing he does not need.' : null;
   G.tickers.clear();
   b.onStart?.(G, S);
@@ -863,11 +863,11 @@ async function startFight(d) {
   mode = 'fight';
   document.body.classList.add('fighting');
   if (d.guns) {
-    brawl = new Gunfight(G, d, actors);
+    brawl = new Gunfight(G, empire.shapeFight(d), actors);
     ui.toast('Hold Right-click / Q to aim · Click / F to fire · R to reload. Buildings stop bullets — use cover. Out of sight, you catch your breath.', 'Gunfight!', true);
     return;
   }
-  brawl = new Brawl(G, d, actors);
+  brawl = new Brawl(G, empire.shapeFight(d), actors);
   ui.toast(`Click / F punch · R kick · hold Right-click / C block · Space dodge · E takedown when they're stunned${d.thugs.some((t) => t.weapon) ? ' — careful: a knife cuts through your block' : ''}`, 'Fight!', true);
 }
 function endFightCleanup() {

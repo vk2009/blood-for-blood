@@ -860,7 +860,7 @@ export class OpenWorld {
         <li><span>Reputation · Product · Fear · Heat</span><b>${E.rep} · ${E.product} · ${E.fear} · ${E.heat}</b></li>
         <li><span>Restaurants · routes</span><b>${E.restaurants} · ${E.routes}</b></li>
         <li><span>Crew</span><b>${crew}/5</b></li>
-      </ul><ul class="j-jobs">${strikes.map(([t, done, how]) => `<li class="${done ? 'done' : ''}"><b>${done ? '✓' : '•'}</b><span>${esc(t)}<small>${esc(done ? 'Done' : how)}</small></span></li>`).join('')}</ul></section>`);
+      </ul>${S.past('empire') && this.G.empire ? `<ul class="j-jobs">${this.G.empire.warLines().map((l) => `<li><b>${l.includes('✓') ? '✓' : l.includes('✗') ? '✗' : '•'}</b><span>${esc(l.replace(/ ?[✓✗→] ?/, ' — '))}</span></li>`).join('')}</ul>` : ''}<ul class="j-jobs">${strikes.map(([t, done, how]) => `<li class="${done ? 'done' : ''}"><b>${done ? '✓' : '•'}</b><span>${esc(t)}<small>${esc(done ? 'Done' : how)}</small></span></li>`).join('')}</ul></section>`);
     }
     this.el.journal.innerHTML = rows.join('');
   }

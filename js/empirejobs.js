@@ -126,7 +126,7 @@ export const EMPIRE_JOBS = [
     uses: [{ x: -60, z: 0, r: 60, label: 'Deal with Leon', when: (S, J) => J.active && J.step === 'decide',
       async fn(T, G, S, J) {
         await T.say('Leon', 'Please, Mr. Fring — they had my brother — I only told them about the corners, never about you, never—');
-        const c = await T.choice(['Half measure: pay him off and send him away ($ 5,000)', 'Full measure: “Mike will take care of it.”', 'Give him to the Salamancas — let them owe you'], 'Leon');
+        const c = await T.choice(['Half measure: pay him off and send him away ($5,000)', 'Full measure: “Mike will take care of it.”', 'Give him to the Salamancas — let them owe you'], 'Leon');
         if (c === 0) { G.addPesos(-5000, 'Leon’s bus ticket'); G.empire.apply({ heat: 10, rep: 4 }, 'A half measure'); J.setFlag('leon:half'); await T.say('Gustavo', 'Get on a bus, Leon. Tonight.'); }
         else if (c === 1) { G.empire.apply({ fear: 12, heat: -12 }, 'No half measures'); J.setFlag('leon:full'); await T.say('', '*Mike steps out of a car you did not hear arrive. Leon stops talking.*'); }
         else { G.empire.apply({ rep: -10, fear: 6 }, 'A gift for the cartel'); J.setFlag('leon:cartel'); await T.say('Gustavo', '(Let Hector’s men think I am their friend. For now.)'); }
@@ -184,7 +184,7 @@ export const EMPIRE_JOBS = [
       await T.say('Gustavo', 'I am here for you, Mr. Boetticher. Your professor says you are the best chemist he has taught in twenty years. And that you cannot pay for your doctorate.');
       await T.say('Gale Boetticher', 'He said that? …Chemistry is the study of change, you know. Of what things become.');
       await T.say('Gustavo', '(He even talks like Max. Max would have liked him.)');
-      const c = await T.choice(['Pay his scholarship ($ 20,000)', '"Another time."'], 'Gale Boetticher');
+      const c = await T.choice(['Pay his scholarship ($20,000)', '"Another time."'], 'Gale Boetticher');
       if (c !== 0) return;
       if (G.pesos < 20000) { await T.say('Gustavo', '(Not enough in the safe. Not yet.)'); return; }
       G.addPesos(-20000, 'Gale’s scholarship');
@@ -212,7 +212,7 @@ export const EMPIRE_JOBS = [
     uses: [{ x: -30, z: 0, r: 80, label: 'Talk to the witness', when: (S, J) => J.active && J.step === 'persuade',
       async fn(T, G, S, J) {
         await T.say('Witness', 'I saw what I saw! The man had a bag and the cop took it!');
-        const c = await T.choice(['"You saw a man drop a bag of laundry." ($ 3,000)', '"You have a sister in Las Cruces. Pretty house."', '"Testify, then. See what happens."'], 'The witness');
+        const c = await T.choice(['"You saw a man drop a bag of laundry." ($3,000)', '"You have a sister in Las Cruces. Pretty house."', '"Testify, then. See what happens."'], 'The witness');
         if (c === 0) { G.addPesos(-3000, 'A new memory'); await T.say('Witness', '…Laundry. Yeah. It was laundry.'); }
         else if (c === 1) { G.empire.apply({ fear: 8, rep: -4 }, 'A quiet word'); await T.say('Witness', '*He goes white.* I didn’t see anything. I swear.'); }
         else { G.empire.apply({ heat: 10 }, 'A witness who talks'); await T.say('Witness', '*He runs to the police the same afternoon.*'); }
@@ -229,7 +229,7 @@ export const EMPIRE_JOBS = [
       if (J.active) { await T.say('Saul Goodman', 'The witness, Mr. F! The bus stop by the university! Chop chop!'); return; }
       await T.say('Saul Goodman', 'Saul Goodman! Did you know you have rights? The Constitution says you do. And so do I.');
       await T.say('Saul Goodman', 'Your guy — Pedro? Pablo? Pedro — got picked up with a bag that was definitely not his. The only witness is a grad student who takes the bus at UNM.');
-      const c = await T.choice(['Hire him ($ 10,000)', '"I do not know any Pedro."'], 'Saul Goodman');
+      const c = await T.choice(['Hire him ($10,000)', '"I do not know any Pedro."'], 'Saul Goodman');
       if (c !== 0) { await T.say('Saul Goodman', 'Course you don’t. Card’s on the desk. Better call!'); return; }
       if (G.pesos < 10000) { await T.say('Saul Goodman', 'Ten grand is ten grand, my friend. Cash, preferably small.'); return; }
       G.addPesos(-10000, 'Saul’s retainer');
