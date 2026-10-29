@@ -7,6 +7,8 @@
 //   J.stat('mercy' | 'fear' | 'bond') nudges the hidden reputation values.
 // instant: true jobs are one conversation (a single tough choice) rather than a task.
 
+import { EMPIRE_JOBS } from './empirejobs.js';
+
 const CHAPTER_I = (S) => S.at('toStation') || S.at('board');
 const SANTIAGO = (S) => S.past('getId') && !S.past('resign');
 const POLLOS = (S) => S.past('opening') && !S.past('peterScene');
@@ -352,6 +354,8 @@ export const JOBS = [
   },
 ];
 
+JOBS.push(...EMPIRE_JOBS);
+
 const FLOUR = [{ id: 'flour1', x: -55, z: 4.5 }, { id: 'flour2', x: 3.2, z: -30 }, { id: 'flour3', x: 52, z: -15 }];
 
 // ================================================================ collectibles
@@ -407,6 +411,13 @@ export const CRIME = {
     when: (S) => !S.at('crime') && !S.at('walkFacility'),
     barks: ['Keep walking, milico. Not your business.', '¡Un General! Get out of here, viejo!'],
     kinds: [{ name: 'Street robbery' }, { name: 'Shop robbery', alert: 'Glass breaking — someone is robbing a shopkeeper.' }],
+  },
+  abq: {
+    interval: [70, 120], police: true, knife: 0.4, thugLooks: ['thug', 'thug2', 'dealer'], reward: [200, 600],
+    policeLook: 'apd', policeName: 'APD!', policeBarks: ['Albuquerque Police! Get on the ground!', 'Hands where I can see them!'],
+    when: (S) => S.at('empire'),
+    barks: ['Mind your business, chicken man.', 'Keep walking, old man.'],
+    kinds: [{ name: 'Mugging', alert: 'Someone is being mugged on Central Avenue.' }, { name: 'Robbery', alert: 'A shopkeeper is shouting for help.' }],
   },
   pollos: {
     interval: [55, 95], police: true, knife: 0.35, thugLooks: ['thug', 'thug2', 'rioter'], reward: [1500, 4000],

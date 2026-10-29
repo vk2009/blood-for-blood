@@ -27,6 +27,8 @@
     </div>
   </div>
   <div id="ow-timer"></div>
+  <div id="bossbar"><b id="boss-name"></b><div class="bb-bar"><div id="boss-fill"></div></div></div>
+  <div id="empire"></div>
   <div id="heat"></div>
   <div id="money"><span class="peso">$</span><span id="money-val">0</span><small>pesos</small></div>
   <div id="mapwrap">
@@ -134,7 +136,9 @@
       <tr><td><kbd>Tab</kbd></td><td>Skip cutscene</td></tr>
       <tr><td>Click / <kbd>F</kbd></td><td>Punch — in a fight, or anyone in the street (brings the Carabineros)</td></tr>
       <tr><td>Right-click / <kbd>C</kbd></td><td>Block (hold)</td></tr>
-      <tr><td><kbd>Space</kbd></td><td>Dodge (in a fight)</td></tr>
+      <tr><td><kbd>Space</kbd></td><td>Dodge (in a fight) — the only way out of a heavy swing (red glow)</td></tr>
+      <tr><td><kbd>R</kbd></td><td>Kick (in a fight) · reload (in a gunfight)</td></tr>
+      <tr><td>Right-click / <kbd>Q</kbd></td><td>Aim (in a gunfight) — shoot red propane tanks to clear a crowd</td></tr>
     </table>
   </div>
 </div>
@@ -171,9 +175,9 @@
 <!-- ============ End ============ -->
 <div id="ending" class="screen hidden">
   <div class="title-inner">
-    <div class="eyebrow">End of Part One</div>
+    <div class="eyebrow">The End</div>
     <h1 class="logo"><b>BLOOD</b><span>FOR</span><b>BLOOD</b></h1>
-    <p>Emilio Gonzalez is gone. Gustavo Fring remembers everything.<br/>Twenty years later, Don Eladio will learn what patience costs.</p>
+    <p id="ending-text">Emilio Gonzalez died in Santiago. Max Arciniega died in a swimming pool in Mexico.<br/>Gustavo Fring runs the show. He paid for it with everything he was.</p>
     <div class="title-buttons"><button data-act="title">Return to Title</button></div>
   </div>
 </div>

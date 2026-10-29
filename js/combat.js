@@ -8,7 +8,7 @@ import { sfx } from './sfx.js';
 import { createKnife } from './props.js';
 
 const PLAYER_HP = 100;
-const ENEMY_HP = 56;
+const ENEMY_HP = 70;
 const angDiff = (a, b) => Math.atan2(Math.sin(b - a), Math.cos(b - a));
 
 // Pick a yaw so that falling backwards lands the body on open floor, not in a wall.
@@ -26,7 +26,13 @@ class Enemy {
   constructor(actor, home) {
     this.a = actor;
     this.home = home;
-    this.hp = ENEMY_HP;
+    this.boss = !!home.boss;
+    this.maxHp = home.hp ?? (this.boss ? 200 : ENEMY_HP);
+    this.hp = this.maxHp;
+    this.name = home.name || null;
+    this.heavyEvery = this.boss || home.weapon === 'axe' ? 3 : 0;   // every Nth swing is an unblockable heavy
+    this.swings = 0;
+    this.chain = 0;               // unanswered hits in a row; three and they break the combo
     this.state = 'approach';
     this.t = 0;
     this.cool = 0.6 + Math.random() * 1.2;
@@ -46,6 +52,7 @@ export class Brawl {
     this.G = G;
     this.danger = danger;
     this.enemies = actors.map((a, i) => new Enemy(a, danger.thugs[i]));
+    for (const e of this.enemies) e.cool = 0.3 + Math.random() * 0.8;
     // Armed thugs carry a knife in the right hand: they hit harder and cut through a block.
     for (const e of this.enemies) if (e.home.weapon === 'knife') {
       e.knife = createKnife();
@@ -53,7 +60,9 @@ export class Brawl {
       e.a.root.add(e.knife);
     }
     this.attackers = new Set();
-    this.maxAtk = this.enemies.length >= 3 ? 2 : 1;
+    this.maxAtk = this.enemies.length >= 4 ? 3 : this.enemies.length >= 2 ? 2 : 1;
+    this.bossBar = this.enemies.find((e) => e.boss) || null;
+    if (this.bossBar) G.ui.boss(this.bossBar.name || danger.speaker || 'Boss', 1);
     this.over = null;
     this.endT = 0;
     this.escapeT = 0;
@@ -74,6 +83,7 @@ export class Brawl {
   }
 
   dispose() {
+    this.G.ui.boss(null);
     for (const el of this.plates) el.remove();
     for (const e of this.enemies) if (e.knife) e.a.root.remove(e.knife);
   }
@@ -125,14 +135,15 @@ export class Brawl {
     if (fin && input.pressed('KeyE') && p.stun <= 0) {
       p.modelYaw = Math.atan2(fin.pos.x - p.pos.x, fin.pos.z - p.pos.z);
       p.atkKind = 2; p.atk = 0.42; p.atkCool = 0.5; p.atkHit = true;
-      fin.hp = 0; this.knockDown(fin);
       fin.knock.set(Math.sin(p.modelYaw), 0, Math.cos(p.modelYaw)).multiplyScalar(4);
+      if (fin.boss) { fin.hp -= fin.maxHp * 0.18; fin.state = 'guard'; fin.t = 0.4; fin.chain = 0; if (fin.hp <= 0) this.knockDown(fin); }
+      else { fin.hp = 0; this.knockDown(fin); }
       sfx.kick(); this.G.shake = 0.35; this.G.hitstop = 0.18;
     }
     if (p.atk > 0 && p.atkKind === 3) {
       const k = 1 - p.atk / 0.55;
       hero.pose.kick = k < 0.4 ? k / 0.4 : Math.max(0, 1 - (k - 0.4) / 0.6);
-      if (!p.atkHit && k >= 0.4) { p.atkHit = true; this.playerHits(22, 2.0, 5.5); }
+      if (!p.atkHit && k >= 0.4) { p.atkHit = true; this.playerHits(20, 2.0, 5.5); }
       p.atk -= dt;
       if (p.atk <= 0) hero.pose.kick = 0;
     } else if (p.atk > 0) {
@@ -141,7 +152,7 @@ export class Brawl {
       const ext = k < 0.35 ? k / 0.35 : Math.max(0, 1 - (k - 0.35) / 0.65);
       hero.pose.jab = p.atkKind === 1 ? ext : 0;
       hero.pose.punch = p.atkKind === 2 ? ext : 0;
-      if (!p.atkHit && k >= 0.3) { p.atkHit = true; this.playerHits(p.atkKind === 1 ? 9 : 15); }
+      if (!p.atkHit && k >= 0.3) { p.atkHit = true; this.playerHits(p.atkKind === 1 ? 8 : 13); }
       p.atk -= dt;
       if (p.atk <= 0) { hero.pose.jab = 0; hero.pose.punch = 0; }
     }
@@ -166,7 +177,7 @@ export class Brawl {
   finishable() {
     const p = this.G.player;
     for (const e of this.enemies) {
-      if (e.down || e.state !== 'stagger' || e.hp > ENEMY_HP * 0.55) continue;
+      if (e.down || e.state !== 'stagger' || e.hp > e.maxHp * (e.boss ? 0.5 : 0.4)) continue;
       if (Math.hypot(e.pos.x - p.pos.x, e.pos.z - p.pos.z) < 1.9) return e;
     }
     return null;
@@ -182,14 +193,21 @@ export class Brawl {
       if (d > reach) continue;
       if (Math.abs(angDiff(p.modelYaw, Math.atan2(dx, dz))) > 1.15) continue;
       any = true;
-      if ((e.state === 'approach' || e.state === 'recover') && Math.random() < 0.3) {
+      if ((e.state === 'approach' || e.state === 'recover') && Math.random() < (e.boss ? 0.55 : 0.45)) {
         e.state = 'guard'; e.t = 0.55; e.a.tweenPose('guard', 1, 0.05);
       }
+      // Combo breaker: after three clean hits in a row they cover up and swing back at once.
+      if (e.chain >= 3 && e.state !== 'windup' && e.state !== 'strike') {
+        e.chain = 0; e.state = 'guard'; e.t = 0.3; e.cool = 0; e.a.tweenPose('guard', 1, 0.05); e.a.tweenPose('hurt', 0, 0.05);
+      }
       const blocked = e.state === 'guard';
+      if (!blocked) e.chain++;
+      // A heavy swing can't be interrupted by a jab — only a kick or a dodge.
+      if (e.state === 'windup' && e.heavy && push < 4 && !blocked) { e.hp -= dmg * 0.5; any = true; if (e.hp <= 0) this.knockDown(e); continue; }
       e.hp -= blocked ? dmg * 0.25 : dmg;
       e.knock.set(dx / d, 0, dz / d).multiplyScalar(blocked ? 1.2 : push);
-      if (e.state === 'windup' && !blocked) this.attackers.delete(e); // interrupted
-      if (!blocked) { e.a.tweenPose('throw', 0, 0.08); e.state = 'stagger'; e.t = push > 4 ? 0.9 : 0.6; e.a.tweenPose('hurt', 1, 0.05); e.a.tweenPose('punch', 0, 0.05); }
+      if (e.state === 'windup' && !blocked) { this.attackers.delete(e); e.heavy = false; } // interrupted
+      if (!blocked) { e.a.tweenPose('throw', 0, 0.08); e.state = 'stagger'; e.t = (push > 4 ? 0.9 : 0.55) * (e.boss ? 0.6 : 1); e.a.tweenPose('hurt', 1, 0.05); e.a.tweenPose('punch', 0, 0.05); }
       if (e.hp <= 0) this.knockDown(e);
     }
     if (any) { (push > 4 ? sfx.kick : sfx.punch)(); this.G.shake = Math.max(this.G.shake, push > 4 ? 0.3 : 0.18); this.G.hitstop = 0.05; }
@@ -250,10 +268,14 @@ export class Brawl {
           else { wx = -uz * e.strafe * 0.55; wz = ux * e.strafe * 0.55; }
           const k = 1 - Math.exp(-7 * dt);
           e.vel.x += (wx - e.vel.x) * k; e.vel.z += (wz - e.vel.z) * k;
-          if (!p.dead && e.state === 'approach' && this.attackers.size < this.maxAtk && e.cool <= 0 && d < 1.8) {
-            this.attackers.add(e); e.state = 'windup'; e.t = 0.45;
+          if (!p.dead && e.state === 'approach' && this.attackers.size < this.maxAtk && e.cool <= 0 && d < (e.heavyEvery ? 2.2 : 1.8)) {
+            this.attackers.add(e); e.state = 'windup';
+            e.swings++;
+            e.heavy = e.heavyEvery > 0 && e.swings % e.heavyEvery === 0;
+            e.t = e.heavy ? 0.85 : 0.38;
             a.tweenPose('guard', 0.25, 0.15);
-            a.tweenPose('throw', 0.32, 0.35);     // fist cocked back: the tell
+            a.tweenPose('throw', e.heavy ? 0.7 : 0.32, e.heavy ? 0.6 : 0.3);     // fist cocked back: the tell
+            if (e.heavy) sfx.whoosh();
           }
           break;
         }
@@ -274,11 +296,15 @@ export class Brawl {
           if (e.t <= 0) { e.state = 'recover'; e.t = 0.45; a.tweenPose('punch', 0, 0.2); a.tweenPose('guard', 1, 0.3); }
           break;
         case 'recover':
-          if (e.t <= 0) { e.state = 'approach'; e.cool = 0.6 + Math.random() * 1.1; this.attackers.delete(e); }
+          if (e.t <= 0) {
+            e.state = 'approach'; this.attackers.delete(e);
+            const rage = e.boss && e.hp < e.maxHp * 0.5;
+            e.cool = (rage ? 0.15 : 0.35) + Math.random() * (rage ? 0.5 : 0.8);
+          }
           break;
         case 'stagger':
           e.vel.multiplyScalar(Math.max(0, 1 - dt * 10));
-          if (e.t <= 0) { e.state = 'approach'; a.tweenPose('hurt', 0, 0.2); a.tweenPose('guard', 1, 0.2); e.cool = Math.max(e.cool, 0.35); this.attackers.delete(e); }
+          if (e.t <= 0) { e.state = 'approach'; a.tweenPose('hurt', 0, 0.2); a.tweenPose('guard', 1, 0.2); e.cool = Math.max(e.cool, 0.25); this.attackers.delete(e); }
           break;
       }
       a.pos.x += e.vel.x * dt; a.pos.z += e.vel.z * dt;
@@ -295,9 +321,11 @@ export class Brawl {
       }
       // health plate
       const pl = this.plates[i];
-      pl.classList.toggle('wind', e.state === 'windup');
-      pl.classList.toggle('finish', e.state === 'stagger' && e.hp <= ENEMY_HP * 0.55);
-      pl.firstChild.firstChild.style.width = `${Math.max(0, e.hp / ENEMY_HP) * 100}%`;
+      pl.classList.toggle('wind', e.state === 'windup' && !e.heavy);
+      pl.classList.toggle('heavy', e.state === 'windup' && !!e.heavy);
+      pl.classList.toggle('finish', e.state === 'stagger' && e.hp <= e.maxHp * (e.boss ? 0.5 : 0.4));
+      pl.firstChild.firstChild.style.width = `${Math.max(0, e.hp / e.maxHp) * 100}%`;
+      if (e === this.bossBar) G.ui.boss(e.name || this.danger.speaker || 'Boss', e.hp / e.maxHp);
       this.G.placePlate(pl, a.pos, 2.15);
     }
 
@@ -319,13 +347,22 @@ export class Brawl {
 
   enemyHits(e, d, face) {
     const G = this.G, p = G.player;
-    if (d > 1.9 || p.dead) return;
+    const heavy = e.heavy; e.heavy = false;
+    if (d > (heavy ? 2.4 : 1.9) || p.dead) return;
     if (p.dodge > 0) return; // i-frames
     const facing = Math.abs(angDiff(p.modelYaw, face + Math.PI)) < 1.3;
     const knife = !!e.knife;
+    if (heavy) {   // unblockable: only a dodge saves you
+      p.hp -= p.blocking ? 22 : 30; p.stun = 0.6; p.blocking = false;
+      G.hero.pose.hurt = 1; G.ui.hit(); G.ui.setHealth(p.hp / PLAYER_HP); G.shake = 0.5; sfx.kick();
+      p.knockV.set(Math.sin(face), 0, Math.cos(face)).multiplyScalar(6);
+      if (p.hp <= 0) { p.dead = 0.001; p.modelYaw = fallYaw(G.loc, p.pos, p.modelYaw); sfx.thud(); }
+      return;
+    }
     if (p.blocking && facing && !knife) {
       sfx.block();
-      e.state = 'stagger'; e.t = 0.5; e.a.tweenPose('hurt', 0.6, 0.05);
+      p.hp -= 2; G.ui.setHealth(p.hp / PLAYER_HP);   // a block still stings
+      e.state = 'stagger'; e.t = e.boss ? 0.2 : 0.35; e.a.tweenPose('hurt', 0.6, 0.05);
       e.knock.set(-Math.sin(face), 0, -Math.cos(face)).multiplyScalar(2.5);
       this.attackers.delete(e);
       return;
@@ -336,7 +373,7 @@ export class Brawl {
       if (p.hp <= 0) { p.dead = 0.001; p.modelYaw = fallYaw(G.loc, p.pos, p.modelYaw); sfx.thud(); }
       return;
     }
-    p.hp -= knife ? 18 + Math.random() * 5 : 13 + Math.random() * 6;
+    p.hp -= (knife ? 20 + Math.random() * 6 : 14 + Math.random() * 6) * (e.boss ? 1.25 : 1);
     p.stun = 0.35;
     G.hero.pose.hurt = 1;
     G.ui.hit();

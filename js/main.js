@@ -20,6 +20,7 @@ import { waveFlags, flickerFires } from './props.js';
 import { sfx } from './sfx.js';
 import { OpenWorld } from './openworld.js';
 import { Gunfight } from './gunplay.js';
+import { Empire } from './empire.js';
 
 // ---------------------------------------------------------------- renderer
 let MAX_DPR = Math.min(devicePixelRatio, 1.0);
@@ -274,7 +275,7 @@ function setHeroLook(look) {
   G.hero = hero;
 }
 
-const state = { beat: 0, inv: [], pesos: 0, flags: {}, food: {}, stats: {}, side: null };
+const state = { beat: 0, inv: [], pesos: 0, flags: {}, food: {}, stats: {}, side: null, empire: null };
 let loc = null;
 let peds = [];
 let mode = 'title';      // title | play | talk | scene | fight | gameover | ending
@@ -291,6 +292,7 @@ const S = {
   flag: (f) => !!state.flags[f],
   playerPos: () => player.pos,
   stat: (k) => state.stats[k] || 0,
+  empire: () => state.empire,
 };
 const beatText = (b) => (typeof b?.text === 'function' ? b.text(S) : b?.text || '');
 
@@ -331,7 +333,7 @@ const G = {
   addFood(id) { state.food[id] = (state.food[id] || 0) + 1; ui.toast(`${FOODS[id].name} — eat it from the inventory (I)`, 'Food'); sfx.item(); },
   eat(id) {
     if (!state.food[id]) return;
-    if (player.hp >= PLAYER_HP) { ui.toast('Emilio isn\u2019t hungry. He won\u2019t waste it.', 'Health'); return; }
+    if (player.hp >= PLAYER_HP) { ui.toast(`${G.heroName()} isn\u2019t hungry. He won\u2019t waste it.`, 'Health'); return; }
     state.food[id]--;
     if (!state.food[id]) delete state.food[id];
     const before = player.hp;
@@ -342,17 +344,25 @@ const G = {
   },
   heroGesture() { gesture.t = 0; gesture.on = true; },
   setFlag(f) { state.flags[f] = true; },
+  clearFlag(f) { delete state.flags[f]; },
   clearFallen() { for (const a of loc?.fallen || []) a.remove(); if (loc) loc.fallen = []; },
   hideHero(b) { heroHidden = b; if (hero) hero.root.visible = !b; },
   placePlayer(x, z, yaw) { player.pos.set(x, 0, z); player.yaw = player.modelYaw = yaw; },
   flash() { flashEl.style.transition = 'none'; flashEl.style.opacity = '0.9'; requestAnimationFrame(() => { flashEl.style.transition = 'opacity .6s'; flashEl.style.opacity = '0'; }); },
   endGame() { showEnding(); },
+  gameOver: (why) => gameOver(why),
+  // After the passports, Emilio is Gustavo — everywhere.
+  heroName: () => (S.past('newNames') ? 'Gustavo' : 'Emilio'),
+  aimCam: false,
+  tickers: new Set(),          // per-frame hooks for special objectives (bomb hunt…)
   placePlate,
 };
 let director = new Director(G);
 G.director = director;
 const ow = new OpenWorld(G, state);
 G.ow = ow;
+const empire = new Empire(G, state);
+G.empire = empire;
 setHeroLook('emilio');
 
 // ---------------------------------------------------------------- locations
@@ -464,6 +474,10 @@ function startBeat(i, from = null) {
   const b = BEATS[i];
   if (!b) return;
   ui.prompt(null);
+  ui.setCurrency(S.past('burial') ? 'dollars' : 'pesos');
+  invPanel.emptyText = S.past('newNames') ? 'Gustavo keeps nothing he does not need.' : null;
+  G.tickers.clear();
+  b.onStart?.(G, S);
   if (b.type === 'scene') {
     ow.cancelTransient('scene');
     ow.endCrime();
@@ -486,6 +500,7 @@ function startBeat(i, from = null) {
   }
   // goal
   setHeroLook(b.look || heroLook);
+  moodOverride = b.mood ?? null;
   if (from) enterLocation(from.loc, { x: from.x, z: from.z, yaw: from.yaw });
   else if (continuing || (b.spawn === 'keep' && loc?.id === b.loc)) {
     applyEnv(); G.hideHero(false); setStoryNpcsVisible(true); buildMinimapBase();
@@ -505,6 +520,7 @@ function processEvents() {
   while (pendingEvents.length) {
     const e = pendingEvents.shift();
     ow.onEvent(e);
+    empire.onEvent?.(e);
     const b = currentBeat();
     if (b?.type === 'goal' && b.done(e, S)) {
       ui.toast(beatText(b), 'Objective complete');
@@ -525,6 +541,7 @@ function snapshot() {
     // street fights that only exist for a moment are never saved as "cleared"
     flags: Object.fromEntries(Object.entries(state.flags).filter(([k]) => !/^cleared:(ev|cops)\d|^cleared:(ortuzar|choros2)$/.test(k))),
     stats: { ...state.stats }, side: state.side ? JSON.parse(JSON.stringify(state.side)) : null,
+    empire: state.empire ? JSON.parse(JSON.stringify(state.empire)) : null,
   };
 }
 function autosave() {
@@ -548,6 +565,11 @@ function resetForLoad() {
   ow.cancelTransient();
   ow.endCrime();
   ow.endPolice();
+  G.tickers.clear();
+  G.bomb = null;
+  document.getElementById('ow-timer').classList.remove('show');
+  G.aimCam = false; G.noFists = false;
+  ui.boss(null);
   closeTalk();
   ui.hideCard(true); ui.fade(false); ui.qte(null);
   moodOverride = null;
@@ -563,6 +585,7 @@ function loadGame(save) {
   state.inv = [...save.inv]; state.pesos = save.pesos; state.flags = { ...save.flags }; state.food = { ...(save.food || {}) };
   state.stats = { ...(save.stats || {}) };
   state.side = save.side ? JSON.parse(JSON.stringify(save.side)) : null;
+  state.empire = save.empire ? JSON.parse(JSON.stringify(save.empire)) : null;
   player.hp = save.hp > 0 ? save.hp : PLAYER_HP;
   ui.setHealth(player.hp / PLAYER_HP);
   ui.setMoney(state.pesos);
@@ -575,7 +598,7 @@ function loadGame(save) {
 }
 function newGame() {
   resetForLoad();
-  state.inv = []; state.pesos = 0; state.flags = {}; state.food = {}; state.stats = {}; state.side = null;
+  state.inv = []; state.pesos = 0; state.flags = {}; state.food = {}; state.stats = {}; state.side = null; state.empire = null;
   ow.afterLoad();
   player.hp = PLAYER_HP; ui.setHealth(1);
   ui.setMoney(0);
@@ -706,7 +729,7 @@ function updateCamera(dt) {
   const cp = Math.cos(player.pitch), sp = Math.sin(player.pitch);
   back.set(-Math.sin(player.yaw) * cp, sp, -Math.cos(player.yaw) * cp);
   right.set(-Math.cos(player.yaw), 0, Math.sin(player.yaw));
-  const aim = brawl?.aiming;
+  const aim = brawl?.aiming || G.aimCam;
   pivot.set(player.pos.x, player.pos.y + 1.55, player.pos.z).addScaledVector(right, aim ? 0.75 : loc.interior ? 0.3 : 0.45);
   let want = aim ? Math.min(cam.dist, 2.1) : cam.dist;
   ray.set(pivot, back); ray.far = want;
@@ -745,6 +768,15 @@ function nearestTarget() {
     const d = Math.hypot(n.pos.x - player.pos.x, n.pos.z - player.pos.z) / 2.0;
     if (d < bestScore) { best = { kind: 'npc', npc: n }; bestScore = d; }
   }
+  // Standing inside a fight zone that didn't start (you loaded a save in it): offer to start it.
+  for (const d of loc.dangers) {
+    if (d.armed || state.flags['cleared:' + d.id] || (d.when && !d.when(S))) continue;
+    if (!(player.pos.x > d.minX && player.pos.x < d.maxX && player.pos.z > d.minZ && player.pos.z < d.maxZ)) continue;
+    for (const a of loc.thugActors?.[d.id] || []) {
+      const dd = Math.hypot(a.pos.x - player.pos.x, a.pos.z - player.pos.z) / 4;
+      if (dd < bestScore) { best = { kind: 'fight', d }; bestScore = dd; }
+    }
+  }
   for (const it of loc.interactables) {
     if (it.when && !it.when(S)) continue;
     if (it.type === 'pickup' && state.inv.includes(it.item)) continue;
@@ -758,13 +790,15 @@ function updateInteraction(dt) {
   const t = nearestTarget();
   if (!t) { ui.prompt(null); return; }
   let label, locked = false;
-  if (t.kind === 'npc') label = `Talk${t.npc.name ? ` to <b>${t.npc.name}</b>` : ''}`;
+  if (t.kind === 'fight') label = `Fight <b>${t.d.speaker || t.d.name}</b>`;
+  else if (t.kind === 'npc') label = `Talk${t.npc.name ? ` to <b>${t.npc.name}</b>` : ''}`;
   else {
     label = `<b>${t.it.label}</b>`;
     if (t.it.requires && !state.inv.includes(t.it.requires)) locked = true;
   }
   ui.prompt(`<kbd>E</kbd> ${label}`, locked);
   if (!input.pressed('KeyE') || interactCooldown > 0) return;
+  if (t.kind === 'fight') { startFight(t.d); return; }
   if (t.kind === 'npc') {
     const n = t.npc, def = n.def;
     if (def?.talkFn) runConvo(def.talkFn, n);
@@ -773,7 +807,7 @@ function updateInteraction(dt) {
     return;
   }
   const it = t.it;
-  if (locked) { runConvo((T) => T.say('Emilio', it.lockedMsg || 'Not yet.')); return; }
+  if (locked) { runConvo((T) => T.say(G.heroName(), it.lockedMsg || 'Not yet.')); return; }
   if (it.fn) { runConvo(it.fn); interactCooldown = 0.4; return; }
   if (it.type === 'pickup') {
     if (it.pesos) G.addPesos(it.pesos, ITEMS[it.item].name);
@@ -1132,11 +1166,15 @@ $('gameover').addEventListener('click', (e) => {
 $('ending').addEventListener('click', (e) => { if (e.target.closest('button')) toTitle(); });
 
 function gameOver(why) {
+  director.abort();
+  closeTalk();
+  ow.cancelTransient();
   mode = 'gameover';
   endFightCleanup();
   document.exitPointerLock?.();
   $('gameover-why').textContent = why;
-  screens.gameover.querySelector('h1').textContent = /beaten/.test(why) ? 'KNOCKED OUT' : 'GAME OVER';
+  screens.gameover.querySelector('h1').textContent = /beaten|unconscious/.test(why) ? 'KNOCKED OUT' : 'GAME OVER';
+  ui.boss(null);
   const s = Saves.latest();
   $('gameover-save').textContent = s ? `Last save: ${s.objective || s.chapter} · ${describeSave(s)}` : '';
   screens.gameover.classList.remove('hidden');
@@ -1146,8 +1184,9 @@ function showEnding() {
   document.exitPointerLock?.();
   document.body.classList.add('on-title');
   moodOverride = 'dusk';
-  showLoc('hacienda');
+  showLoc('abq');
   ui.fade(false);
+  ui.boss(null);
   screens.ending.classList.remove('hidden');
 }
 function toTitle() {
@@ -1232,6 +1271,7 @@ function frame() {
     const active = !paused;
     if (active && mode === 'play') {
       updatePlayer(dt, true);
+      for (const f of G.tickers) f(dt);
       updateInteraction(dt);
       updateTriggers();
       checkDangers();
@@ -1269,6 +1309,7 @@ function frame() {
     updateSun(player.pos);
   }
   if (!paused) talk.update(dt);
+  empire.update();
   input.endFrame();
   render();
 }

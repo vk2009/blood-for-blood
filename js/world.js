@@ -6,9 +6,10 @@ import { mat } from './character.js';
 import {
   Loc, TEX, seedRandom, rand, rr, pick, mesh, flat, box, std, withRepeat, canvasTexture, signTexture, signMaterials,
   contactShadow, createCar, building, house, parkCar, streetlight, rock, shrub, tree, dumpster, bench, fence, lowWall,
-  ground, road, mesas, desertScatter,
+  ground, road, mesas, desertScatter, poleSign, linePath,
 } from './kit.js';
-import { createPistol } from './gunplay.js';
+import { createPistol, addPropane } from './gunplay.js';
+import { shedUses } from './story2.js';
 import {
   TEX2, chileFlagTexture, mexicoFlagTexture, flagPole, shack, shackBlock, room, partition, table, chair, bed, shelf, crate,
   trash, barrelFire, clothesLine, lampPost, corkBoard, framedPicture, portraitTexture, createTrain, track, createPlane,
@@ -802,16 +803,244 @@ function buildHacienda() {
   mesas(L, 30, 120, 220);
   desertScatter(L, 100, 40, 110);
   L.zones.push({ name: 'Pool Terrace', minX: -30, maxX: 30, minZ: -30, maxZ: 0 }, { name: 'Entrance Drive', minX: -30, maxX: 30, minZ: 0, maxZ: 34 });
+  const ch2 = (S) => S.at('meetEladio');
+  const after = (S) => S.at('leaveHacienda');
   L.storyNpcs.push(
-    { id: 'eladio', name: 'Don Eladio', look: 'eladio', x: 11.9, z: -7, yaw: -Math.PI / 2, wander: 0, sit: true, lines: ['…'] },
-    { id: 'hector', name: 'Hector Salamanca', look: 'hector', x: 10.6, z: -4.4, yaw: -2.6, wander: 0.4, lines: ['*stares at you, unblinking*'] },
-    { id: 'guard1', name: 'Sicario (Hitman)', look: 'cartel', x: -3.5, z: 30, yaw: Math.PI, wander: 0.3, lines: ['Don Eladio is by the pool. Walk.'] },
-    { id: 'guard2', name: 'Sicario (Hitman)', look: 'cartel', x: 3.5, z: 30, yaw: Math.PI, wander: 0.3, lines: ['Keep your hands where I can see them, chilenos.'] },
-    { id: 'guard3', name: 'Sicario (Hitman)', look: 'cartel', x: -14, z: -14, yaw: 0.5, wander: 1, lines: ['…'] },
-    { id: 'maxFollow', name: 'Max', look: 'max', x: 1.5, z: 31, yaw: Math.PI, wander: 0, lines: ['Stay calm, Gustavo. We are partners now. Equals.'], follower: true },
+    { id: 'eladio', name: 'Don Eladio', look: 'eladio', x: 11.9, z: -7, yaw: -Math.PI / 2, wander: 0, sit: true, lines: ['…'], when: ch2 },
+    { id: 'hector', name: 'Hector Salamanca', look: 'hector', x: 10.6, z: -4.4, yaw: -2.6, wander: 0.4, lines: ['*stares at you, unblinking*'], when: ch2 },
+    { id: 'guard1', name: 'Sicario (Hitman)', look: 'cartel', x: -3.5, z: 30, yaw: Math.PI, wander: 0.3, lines: ['Don Eladio is by the pool. Walk.'], when: (S) => ch2(S) || after(S) },
+    { id: 'guard2', name: 'Sicario (Hitman)', look: 'cartel', x: 3.5, z: 30, yaw: Math.PI, wander: 0.3, lines: ['Keep your hands where I can see them, chilenos.'], when: ch2 },
+    { id: 'guard3', name: 'Sicario (Hitman)', look: 'cartel', x: -14, z: -14, yaw: 0.5, wander: 1, lines: ['…'], when: ch2 },
+    { id: 'maxFollow', name: 'Max', look: 'max', x: 1.5, z: 31, yaw: Math.PI, wander: 0, lines: ['Stay calm, Gustavo. We are partners now. Equals.'], follower: true, when: ch2 },
+    // After the pool: Hector by the water, guns on you, and the way out.
+    { id: 'hectorAfter', name: 'Hector Salamanca', look: 'hector', x: 9.6, z: -3.2, yaw: Math.PI, wander: 0, talk: 'hectorAfter', when: after },
+    { id: 'guardA1', name: 'Sicario (Hitman)', look: 'cartel', x: 7.6, z: -1.6, yaw: Math.PI, wander: 0, lines: ['Walk, chileno. Before Don Eladio changes his mind.'], when: after },
+    { id: 'guardA2', name: 'Sicario (Hitman)', look: 'cartel', x: -6, z: 4, yaw: 0.6, wander: 0, lines: ['The gate is that way.'], when: after },
+    { id: 'guard3b', name: 'Sicario (Hitman)', look: 'cartel', x: 3.5, z: 30, yaw: Math.PI, wander: 0, lines: ['Out.'], when: after },
   );
+  // Chapter IV: the night of the tequila. The drive, then Don Eladio himself by the pool.
+  for (const [x, z] of [[-13, 13], [13, 22], [-14.5, -5], [14.5, -11.5]]) addPropane(L, x, z);
+  for (const [x, z, w, d] of [[-2.5, 13, 2.4, 1], [3.5, 9, 2.4, 1], [-10, 19, 1.2, 2.4], [10, 15, 1.2, 2.4]]) cover(L, x, z, w, d, 1.15, '#c8b08a');
+  L.dangers.push(
+    { id: 'eladioDrive', name: 'Entrance Drive', minX: -30, maxX: 30, minZ: 3, maxZ: 33, guns: true, noEscape: true, speaker: 'Sicario',
+      when: (S) => S.at('eladioDrive'), loseMsg: 'Don Eladio’s men cut you down on the drive. Mike and Jesse never reached the car.',
+      thugs: [{ look: 'cartel', x: -6, z: 27, yaw: Math.PI }, { look: 'cartel', x: 6, z: 28, yaw: Math.PI }, { look: 'cartel', x: 0, z: 24, yaw: Math.PI }, { look: 'cartel', x: -12, z: 22, yaw: Math.PI }],
+      waves: [[{ look: 'cartel', x: -20, z: 30 }, { look: 'cartel', x: 20, z: 30 }, { look: 'cartel', x: 0, z: 32 }]],
+      barks: ['¡Mataron al patrón’s capos! ¡Que no salga nadie!', 'The chicken man poisoned them — kill him!'], reward: 0 },
+    { id: 'eladioBoss', name: 'Pool Terrace', minX: -30, maxX: 30, minZ: -19, maxZ: 1.5, guns: true, noEscape: true, speaker: 'Don Eladio',
+      when: (S) => S.at('eladioBoss'), loseMsg: 'Don Eladio watched you fall into his pool. Just like Max.',
+      thugs: [{ look: 'eladio', x: 0, z: -15, yaw: 0, boss: true, hp: 460, name: 'Don Eladio Vuente' }, { look: 'cartel', x: -10, z: -12, yaw: 0 }, { look: 'cartel', x: 11, z: -13, yaw: 0 }],
+      summon: [{ x: -16, z: -18 }, { x: 16, z: -18 }, { x: 0, z: -19 }], summonLook: 'cartel', summonMsg: 'Don Eladio whistles for his men.',
+      barks: ['¡Gustavo! You think a bottle of tequila kills Don Eladio Vuente?', 'Twenty years I let you live, Generalísimo. Twenty years!'], reward: 0 },
+  );
+  L.spawns.terrace = { x: 0, z: 2.8, yaw: 0 };
+  L.triggers.push({ id: 'leave', event: 'leftHacienda', minX: -30, maxX: 30, minZ: 29, maxZ: 34, when: (S) => S.at('leaveHacienda') });
+  L.spawns.drive = { x: 0, z: 6, yaw: Math.PI };
   L.triggers.push({ id: 'poolside', event: 'eladio', minX: -22, maxX: 22, minZ: -14, maxZ: 1, when: (S) => S.at('meetEladio') });
   L.spawns.gate = { x: 0, z: 31.5, yaw: Math.PI };
+  L.spawns.default = L.spawns.gate;
+  L.finalize();
+  return L;
+}
+
+// ================================================================ DESERT (cutscene set: Max's grave, Walter)
+function buildDesert() {
+  seedRandom(1989);
+  const L = prep(new Loc('desert', 'The Desert', { bounds: { minX: -40, maxX: 40, minZ: -40, maxZ: 40 }, env: OUT('dusk') }));
+  L.region = 'Chihuahua Desert';
+  ground(L, TEX.sand, 60);
+  mesas(L, 40, 160, 300);
+  desertScatter(L, 140, 12, 120);
+  // A grave: a low mound of earth and a cross of two boards
+  const earth = mat('#7a5a3c', 1);
+  const mound = mesh(new THREE.SphereGeometry(1, 14, 8), earth, L.root, 0, 0, 0);
+  mound.scale.set(1.0, 0.35, 2.1);
+  mesh(box(0.1, 1.2, 0.08), mat('#6a4a2e', 0.9), L.root, 0, 0.6, -2.2);
+  mesh(box(0.6, 0.1, 0.08), mat('#6a4a2e', 0.9), L.root, 0, 0.9, -2.2);
+  const car = createCar('#1a1a1e', 'sedan');
+  car.position.set(7, 0, 4); car.rotation.y = -0.6; L.root.add(car);
+  L.spawns.default = { x: 3, z: 5, yaw: Math.PI };
+  L.finalize();
+  return L;
+}
+
+// ================================================================ ALBUQUERQUE (Chapters III–IV hub)
+function buildAbq() {
+  seedRandom(1990);
+  const L = prep(new Loc('abq', 'Central Avenue', { bounds: { minX: -95, maxX: 95, minZ: -55, maxZ: 50 }, env: OUT('day'), pedCount: 14, camMax: 9 }));
+  L.region = 'Albuquerque, New Mexico';
+  L.pedLines = 'abq';
+  ground(L, TEX.sand, 90);
+  flat(190, 34, std({ map: withRepeat(TEX.concrete, 40, 8), roughness: 1, color: '#d8d0c0' }), L.root, 0, 0.012, 0);
+  road(L, 0, 0, 190, true, 12);                    // Central Avenue
+  road(L, 0, -31, 48, false, 10);                  // San Mateo (south of Central)
+  mesas(L, 40, 220, 340);
+  desertScatter(L, 70, 110, 200);
+  L.zones.push(
+    { name: 'Los Pollos Hermanos', minX: -50, maxX: -18, minZ: 3, maxZ: 26 },
+    { name: 'Madrigal Warehouse', minX: -80, maxX: -38, minZ: -40, maxZ: -6 },
+    { name: 'University of New Mexico', minX: -30, maxX: -4, minZ: -36, maxZ: -6 },
+    { name: 'Desert Sands Motel', minX: 8, maxX: 38, minZ: -36, maxZ: -6 },
+    { name: 'Llantera El Tío', minX: 44, maxX: 90, minZ: -40, maxZ: -6 },
+    { name: 'Saul Goodman & Associates', minX: 16, maxX: 42, minZ: 6, maxZ: 26 },
+    { name: 'The Crossroads', minX: 50, maxX: 80, minZ: 6, maxZ: 26 },
+    { name: 'Central Avenue', minX: -95, maxX: 95, minZ: -8, maxZ: 8 },
+  );
+  const shop = (x, z, w, d, h, color, face, sign, sub, bg = '#2a2a2a', fg = '#f2e2b0', extra = {}) =>
+    building(L, { x, z, w, d, h, color, face, variant: 'shop', sign, signSub: sub, signBg: bg, signFg: fg, signWidth: Math.min(w * 0.7, 12), signY: h - 0.6, signOut: 0.1, accent: '#3a5a6a', ...extra });
+  // North side (doors face the avenue)
+  shop(-28, 17, 18, 12, 5.2, '#f2e6c4', '-z', 'LOS POLLOS HERMANOS', 'THE CHICKEN BROTHERS · ALBUQUERQUE', '#f4c23b', '#b52a1c', { roof: '#b52a1c', accent: '#b52a1c', doorColor: '#7a3a1a' });
+  shop(29, 16, 22, 10, 4.6, '#d8c8a8', '-z', 'SAUL GOODMAN & ASSOCIATES', 'ATTORNEY AT LAW · ¡HABLO ESPAÑOL!', '#f2f2ee', '#1f3f73');
+  shop(65, 16, 20, 10, 5.4, '#7a5a42', '-z', 'THE CROSSROADS', 'BAR · LIVE MUSIC · POOL', '#1a1a1a', '#ff5a8a');
+  shop(-72, 16, 20, 10, 4.4, '#c8c0b0', '-z', 'GAS ’N GO', 'OPEN 24 HOURS', '#c0392b', '#f2f2ee');
+  shop(5, 22, 14, 10, 7, '#b8ac98', '-z', 'NAVAJO TRADING POST', 'TURQUOISE · RUGS · POTTERY', '#2e6e6a', '#f2e8c8');
+  // South side
+  building(L, { x: -58, z: -21, w: 28, d: 16, h: 9, color: '#9aa0a4', roof: '#6a6e70', face: '+z', variant: 'slit', door: true, doorColor: '#3a3a3a', accent: '#1f3f73',
+    sign: 'MADRIGAL ELECTROMOTIVE', signSub: 'INDUSTRIAL LAUNDRY & LOGISTICS · HANNOVER', signBg: '#1f3f73', signFg: '#f2f2ee', signWidth: 14, signY: 7.4, signOut: 0.1 });
+  building(L, { x: -17, z: -22, w: 20, d: 14, h: 8, color: '#c89a6a', roof: '#8a5a3a', face: '+z', variant: 'window', door: true, accent: '#8a1a1a',
+    sign: 'UNIVERSITY OF NEW MEXICO', signSub: 'DEPARTMENT OF CHEMISTRY', signBg: '#8a1a1a', signFg: '#f2f2ee', signWidth: 12, signY: 6.6, signOut: 0.1 });
+  shop(23, -21, 24, 12, 5, '#e8d8b8', '+z', 'DESERT SANDS MOTEL', 'VACANCY · COLOR TV · POOL', '#2a7a8a', '#f2e8c8', { roof: '#c25a3a' });
+  building(L, { x: 66, z: -26, w: 24, d: 14, h: 6.5, color: '#8a8478', roof: '#5a5650', face: '+z', variant: 'slit', door: true, doorColor: '#2a2a2a', accent: '#6a2a1a',
+    sign: 'LLANTERA EL TÍO', signSub: 'TIRES · REPAIRS · H. SALAMANCA, PROP.', signBg: '#6a2a1a', signFg: '#f2e8c8', signWidth: 12, signY: 5.6, signOut: 0.1 });
+  // Parking lots, cars and cover
+  for (const [x, z, r, c] of [[-44, 12, Math.PI / 2, '#8a2a2a'], [-44, 18, Math.PI / 2, '#d8d0c0'], [-12, 12, -Math.PI / 2, '#3a4a5a'],
+    [16, -12, 0, '#e8e4d8'], [30, -12, 0, '#2a5a3a'], [44, 11, Math.PI / 2, '#5a4a3a'], [-70, -9.5, Math.PI / 2, '#f2f2ee']]) parkCar(L, x, z, r, c);
+  parkCar(L, 80, 10, -Math.PI / 2, '#c8a83a', 'suv');
+  for (const [x, z, w, d] of [[56, -12, 2.6, 1], [62, -15, 1.2, 2.6], [72, -12.5, 2.4, 1], [78, -16, 1.2, 2.2], [52, -16.5, 1.2, 1.2]]) cover(L, x, z, w, d, 1.2, '#2a2a2a');   // tire stacks
+  for (const [x, z] of [[59, -18], [75, -18.5], [-50, -11]]) addPropane(L, x, z);
+  for (const [x, z, w, d] of [[-62, -10, 3, 1.2], [-52, -12.5, 1.2, 2.4]]) cover(L, x, z, w, d, 1.3, '#7a6a52');   // pallets at the warehouse
+  for (const x of [-80, -55, -30, -5, 20, 45, 70]) { streetlight(L, x, 7.2, Math.PI); streetlight(L, x + 12, -7.2, 0); }
+  for (const [x, z] of [[-36, 8.5], [-20, 8.5], [10, 8.5], [40, -8.5], [-36, -8.5]]) tree(L, x, z, 0.7);
+  bench(L, -6, -8.6, 0);
+  poleSign(L, -86, 9, Math.PI, 'ROUTE 66', '#f2f2ee', '#1a1a1a', 'CENTRAL AVENUE · ALBUQUERQUE', 6, 4);
+  L.addTraffic('#8a2a2a', linePath(-3, 92, 1), 184, 10);
+  L.addTraffic('#e8e4d8', linePath(3, 92, -1), 184, 90);
+
+  L.interactables.push(
+    { type: 'door', x: -28, z: 9.6, r: 1.8, label: 'Enter Los Pollos Hermanos', to: 'pollosABQ', spawn: 'entry' },
+  );
+  // ---- Chapter IV: the twins, and Victor's truck
+  const at4 = (id) => (S) => S.at(id);
+  L.storyNpcs.push(
+    { id: 'saul4', name: 'Saul Goodman', look: 'saul', x: 29, z: 9.6, yaw: Math.PI, wander: 0, talk: 'clueSaul', when: at4('cousinsClues') },
+    { id: 'clerk4', name: 'Motel Clerk', look: 'clerk', x: 18, z: -13.2, yaw: 0, wander: 0, talk: 'clueClerk', when: at4('cousinsClues') },
+    { id: 'dealer4', name: 'Salamanca dealer', look: 'dealer', x: 58, z: -10, yaw: Math.PI / 2, wander: 0, talk: 'clueDealer', when: at4('cousinsClues') },
+  );
+  parkCar(L, 86, -2.2, Math.PI / 2, '#f2f2ee', 'suv');   // the Los Pollos delivery truck
+  L.dangers.push(
+    { id: 'twins2', name: 'Desert Sands Motel', minX: 10, maxX: 36, minZ: -14.5, maxZ: -4.5, speaker: 'The Salamanca twins',
+      when: (S) => S.at('cousinsFight') && !S.flag('twins:dea'), loseMsg: 'The Salamanca twins never said a word. Not even at the end.',
+      thugs: [{ look: 'twin', x: 20, z: -11, yaw: 0, boss: true, hp: 170, name: 'Leonel Salamanca', weapon: 'axe' }, { look: 'twin', x: 26, z: -11, yaw: 0, boss: true, hp: 170, name: 'Marco Salamanca', weapon: 'axe' }],
+      barks: ['*Two bald men in silver-toed boots stand up from the hood of a black car. Neither of them speaks.*'], reward: 0 },
+    { id: 'twins1', name: 'Desert Sands Motel', minX: 10, maxX: 36, minZ: -14.5, maxZ: -4.5, speaker: 'Marco Salamanca',
+      when: (S) => S.at('cousinsFight') && S.flag('twins:dea'), loseMsg: 'Marco Salamanca walked away from the motel with his axe and your blood on his boots.',
+      thugs: [{ look: 'twin', x: 23, z: -11, yaw: 0, boss: true, hp: 210, name: 'Marco Salamanca', weapon: 'axe' }],
+      barks: ['*His brother is in a DEA van. He looks at you as if this is your fault. It is.*'], reward: 0 },
+    { id: 'truckAmbush', name: 'Central Avenue', minX: 66, maxX: 94, minZ: -9, maxZ: 9, guns: true, noEscape: true, speaker: 'Sicario',
+      when: (S) => S.at('ambushVictor'), loseMsg: 'Don Eladio’s sicarios finished the job they came for.',
+      thugs: [{ look: 'cartel', x: 88, z: -6, yaw: -Math.PI / 2 }, { look: 'cartel', x: 90, z: 4, yaw: -Math.PI / 2 }, { look: 'cartel', x: 84, z: 6, yaw: -Math.PI / 2 }, { look: 'twin', x: 92, z: 0, yaw: -Math.PI / 2 }],
+      waves: [[{ look: 'cartel', x: 93, z: -7 }, { look: 'cartel', x: 93, z: 7 }, { look: 'cartel', x: 90, z: -8 }]],
+      barks: ['¡Saludos de Don Eladio, pollero!', 'Tell your chicken man the north belongs to Don Eladio!'], reward: 0 },
+  );
+  L.spawns.pollos = { x: -28, z: 7.6, yaw: Math.PI };
+  L.spawns.default = L.spawns.pollos;
+  L.spawns.motel = { x: 23, z: -5, yaw: Math.PI };
+  L.spawns.east = { x: 60, z: 2, yaw: Math.PI / 2 };
+  L.finalize();
+  return L;
+}
+
+// ================================================================ LOS POLLOS HERMANOS — Albuquerque (Gus's office)
+function buildPollosABQ() {
+  seedRandom(1991);
+  const L = prep(new Loc('pollosABQ', 'Los Pollos Hermanos', { bounds: { minX: -8, maxX: 8, minZ: -6, maxZ: 6 }, interior: true, env: IN('warm'), camMax: 3.2 }));
+  L.region = 'Albuquerque, New Mexico';
+  room(L, { w: 16, d: 12, h: 3.2, floor: std({ map: withRepeat(TEX.tiles, 8, 6), roughness: 0.5 }), wall: std({ map: withRepeat(TEX2.cleanWall, 4, 1), roughness: 0.9, color: '#f2e2b8' }),
+    ceiling: '#f2ecda', doorW: 1.8, lights: [[-4, 0], [2, 0], [5.5, -3.5]], lightPower: 12 });
+  // Counter and menu
+  mesh(box(7, 1.05, 0.9), mat('#b52a1c', 0.6), L.root, -3.5, 0.525, -4); L.addBox(-3.5, -4, 7, 0.9);
+  mesh(box(7.1, 0.05, 1.0), mat('#f2efe6', 0.3), L.root, -3.5, 1.07, -4);
+  const menu = new THREE.Mesh(box(4, 1.2, 0.05), signMaterials(signTexture('LOS POLLOS HERMANOS', '#f4c23b', '#b52a1c', 'CHICKEN · CURLY FRIES · DRINKS', 1024, 300), '#f4c23b', 0.3));
+  menu.position.set(-3.5, 2.4, -5.95); L.root.add(menu);
+  for (const [x, z] of [[-5.5, 2.5], [-2, 2.5], [1.5, 2.5], [-5.5, -0.5]]) {
+    table(L, x, z, 0.9, 0.9, '#f2efe6', 0.74);
+    chair(L, x - 0.7, z, Math.PI / 2, '#f4c23b'); chair(L, x + 0.7, z, -Math.PI / 2, '#f4c23b');
+  }
+  // Gus's office in the back right corner
+  const wallM = std({ map: withRepeat(TEX2.cleanWall, 3, 1), roughness: 0.9, color: '#e8dcc0' });
+  partition(L, 2.5, -1.2, 8, -1.2, 3.2, wallM, 4.2);
+  partition(L, 2.5, -6, 2.5, -1.2, 3.2, wallM);
+  table(L, 5.6, -4.4, 2.0, 0.9, '#4a3420', 0.78);
+  chair(L, 5.6, -5.2, 0, '#2a2018');
+  mesh(box(0.42, 0.04, 0.3), mat('#2a2018', 0.6), L.root, 5.3, 0.81, -4.4);   // the ledger
+  framedPicture(L, 5.6, 2.0, -5.96, 0, portraitTexture('#5a4a3a', '#d9c27a', '#e0b08f'), 0.5, 0.65);   // Max
+  shelf(L, 7.7, -3.6, 1.8, -Math.PI / 2, '#4a3420');
+  L.zones.push({ name: 'Office', minX: 2.5, maxX: 8, minZ: -6, maxZ: -1.2 }, { name: 'Dining Room', minX: -8, maxX: 8, minZ: -6, maxZ: 6 });
+  L.interactables.push(
+    { type: 'door', x: 0, z: 5.6, r: 1.4, label: 'Exit', to: 'abq', spawn: 'pollos' },
+    { type: 'use', x: 5.6, z: -3.6, r: 1.4, label: 'Open the ledger', event: 'ledger:desk', when: (S) => S.past('abqArrive') },
+  );
+  L.storyNpcs.push(
+    { id: 'abqCook', name: 'Cashier', look: 'waiter', x: -3.5, z: -4.9, yaw: 0, wander: 0, talk: 'waiterABQ' },
+    { id: 'mikeOffice', name: 'Mike Ehrmantraut', look: 'mike', x: 4.2, z: -2.4, yaw: Math.PI, wander: 0, talk: 'cousinsPlan', when: (S) => S.at('cousinsPlan') },
+  );
+  L.spawns.entry = { x: 0, z: 4.6, yaw: Math.PI };
+  L.spawns.office = { x: 5.4, z: -2.6, yaw: Math.PI };
+  L.spawns.default = L.spawns.entry;
+  L.finalize();
+  return L;
+}
+
+// ================================================================ RANCHO SALAMANCA (the finale)
+function buildRanch() {
+  seedRandom(2010);
+  const L = prep(new Loc('ranch', 'Rancho Salamanca', { bounds: { minX: -42, maxX: 42, minZ: -46, maxZ: 46 }, env: OUT('night'), pedCount: 0, camMax: 8 }));
+  L.region = 'Chihuahua, Mexico';
+  ground(L, TEX.dirt, 70);
+  mesas(L, 30, 180, 300);
+  const adobe = mat('#b88a62', 0.95), tileRoof = mat('#8a3a2a', 0.85);
+  // Perimeter wall, gate gap in the south
+  for (const [x, z, w, d] of [[0, -46.5, 85, 1], [-42.5, 0, 1, 94], [42.5, 0, 1, 94], [-24, 46.5, 37, 1], [24, 46.5, 37, 1]]) {
+    const m = mesh(box(w, 3, d), adobe, L.root, x, 1.5, z); L.addBox(x, z, w, d); L.occluders.push(m);
+  }
+  // The main house (Hector's) and its porch
+  const house1 = mesh(box(34, 6, 12), adobe, L.root, 0, 3, -36); L.addBox(0, -36, 34, 12); L.occluders.push(house1);
+  mesh(box(35, 0.5, 13), tileRoof, L.root, 0, 6.2, -36);
+  for (let x = -14; x <= 14; x += 4) { mesh(box(0.6, 3, 0.6), adobe, L.root, x, 1.5, -29.4); L.addBox(x, -29.4, 0.6, 0.6); }
+  mesh(box(30, 0.3, 2.4), tileRoof, L.root, 0, 3.1, -29.6);
+  // Sheds along both sides (the bomb is in one of them)
+  for (const [x, z] of [[-34, -16], [-34, 2], [-34, 20], [34, -16], [34, 2], [34, 20]]) {
+    const m = mesh(box(8, 3.4, 7), adobe, L.root, x, 1.7, z); L.addBox(x, z, 8, 7); L.occluders.push(m);
+    mesh(box(8.6, 0.3, 7.6), tileRoof, L.root, x, 3.55, z);
+    mesh(box(0.1, 2.2, 1.3), mat('#3a2a1c', 0.7), L.root, x + (x < 0 ? 4.06 : -4.06), 1.1, z);   // door
+  }
+  // Courtyard cover and fires
+  for (const [x, z, w, d] of [[-8, 30, 3, 1.2], [8, 26, 3, 1.2], [-14, 18, 1.2, 3], [14, 14, 1.2, 3], [0, 16, 3, 1.2],
+    [-10, -14, 3, 1.2], [10, -16, 3, 1.2], [0, -8, 3.4, 1.2], [-16, -4, 1.2, 3], [16, -2, 1.2, 3]]) cover(L, x, z, w, d, 1.25, '#7a6a52');
+  parkCar(L, -20, 36, 0.3, '#1a1a1e', 'suv'); parkCar(L, 20, 34, -0.2, '#e8e8e4', 'suv');
+  for (const [x, z] of [[-6, 22], [6, 20], [-12, -18], [12, -21], [0, -24]]) addPropane(L, x, z);
+  for (const [i, [x, z]] of [[-24, 38], [24, 38], [-20, 0], [20, 6], [-6, -26], [6, -26]].entries()) barrelFire(L, x, z, i % 2 === 0);
+  lampPost(L, 0, 42, true);
+  L.zones.push(
+    { name: 'The Gate', minX: -42, maxX: 42, minZ: 8, maxZ: 46 },
+    { name: 'The Sheds', minX: -42, maxX: -26, minZ: -24, maxZ: 26 }, { name: 'The Sheds', minX: 26, maxX: 42, minZ: -24, maxZ: 26 },
+    { name: 'Hector’s Courtyard', minX: -42, maxX: 42, minZ: -46, maxZ: 8 },
+  );
+  L.dangers.push(
+    { id: 'ranchGate', name: 'The Gate', minX: -26, maxX: 26, minZ: 8, maxZ: 38, guns: true, noEscape: true, speaker: 'Salamanca sicario',
+      when: (S) => S.at('final1'), loseMsg: 'Hector’s men held the gate. Gustavo Fring died in the dirt of Chihuahua.',
+      thugs: [{ look: 'cartel', x: -8, z: 12, yaw: 0 }, { look: 'cartel', x: 8, z: 11, yaw: 0 }, { look: 'cartel', x: 0, z: 10, yaw: 0 }, { look: 'cartel', x: -16, z: 14, yaw: 0 }],
+      waves: [[{ look: 'cartel', x: -20, z: 9 }, { look: 'cartel', x: 20, z: 9 }, { look: 'cartel', x: 0, z: 9 }], [{ look: 'cartel', x: -12, z: 9 }, { look: 'cartel', x: 12, z: 9 }, { look: 'cartel', x: 4, z: 9 }, { look: 'cartel', x: -4, z: 9 }]],
+      waveMsg: 'More of Hector’s men pour out of the house!', barks: ['¡Es Fring! ¡El pollero vino solo!', 'El Tío said you would come. ¡Fuego!'], reward: 0 },
+    { id: 'ranchHector', name: 'Hector’s Courtyard', minX: -24, maxX: 24, minZ: -28, maxZ: 6, guns: true, noEscape: true, speaker: 'Hector Salamanca',
+      when: (S) => S.at('final3'), loseMsg: 'Hector Salamanca rang his bell over your body. The last Salamanca won.',
+      thugs: [{ look: 'hectorOld', x: 0, z: -20, yaw: 0, boss: true, hp: 560, name: 'Hector “Tío” Salamanca' }, { look: 'cartel', x: -12, z: -12, yaw: 0 }, { look: 'cartel', x: 12, z: -10, yaw: 0 }],
+      summon: [{ x: -14, z: -28 }, { x: 14, z: -28 }, { x: -22, z: -10 }, { x: 22, z: -10 }], summonLook: 'cartel', summonMsg: 'Ding. Ding. Ding. — Hector rings his bell, and his men come running.',
+      barks: ['*Ding.* *Ding.* *Ding.*', 'Twenty years, chileno. You should have stayed by the pool.'], reward: 0 },
+  );
+  L.interactables.push(...shedUses());
+  L.spawns.gate = { x: 0, z: 42, yaw: Math.PI };
+  L.spawns.yard = { x: 0, z: 6, yaw: Math.PI };
   L.spawns.default = L.spawns.gate;
   L.finalize();
   return L;
@@ -822,6 +1051,7 @@ const BUILDERS = {
   house2: buildHouse2, santiago: buildSantiago, facility: buildFacility,
   pollos: () => buildPollosStreet(false), riot: () => buildPollosStreet(true), pollosIn: buildPollosInside,
   airstrip: buildAirstrip, hacienda: buildHacienda,
+  desert: buildDesert, abq: buildAbq, pollosABQ: buildPollosABQ, ranch: buildRanch,
 };
 const cache = {};
 export function getLocation(id) {

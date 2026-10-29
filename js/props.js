@@ -493,8 +493,11 @@ export function pool(L, x, z, w, d) {
   for (const [ox, oz, ww, dd] of [[0, -d / 2 - 0.4, w + 1.6, 0.8], [0, d / 2 + 0.4, w + 1.6, 0.8], [-w / 2 - 0.4, 0, 0.8, d], [w / 2 + 0.4, 0, 0.8, d]]) {
     mesh(box(ww, 0.12, dd), tile, L.root, x + ox, 0.06, z + oz, false);
   }
-  mesh(box(w, 1.6, d), mat('#5fb8d0', 0.3), L.root, x, -0.8, z, false);
-  const water = flat(w, d, std({ map: withRepeat(TEX2.water, w / 4, d / 4), color: '#7fd0ea', roughness: 0.05, metalness: 0.1, emissive: '#0a3a4a', emissiveIntensity: 0.4 }), L.root, x, -0.12, z);
+  // The ground and terrace are flat planes at y≈0, so the water has to sit on top of
+  // them to be seen (it used to sit below and was hidden). A low coping frames it.
+  const water = flat(w, d, std({ map: withRepeat(TEX2.water, w / 4, d / 4), color: '#5cc4e6', roughness: 0.05, metalness: 0.1, emissive: '#0a4a62', emissiveIntensity: 0.55 }), L.root, x, 0.07, z);
+  water.renderOrder = 1;
+  flat(w + 0.3, d + 0.3, mat('#2f8fb0', 0.4), L.root, x, 0.045, z);   // darker rim where the wall meets the water
   water.userData.dynamic = true;
   L.water = water;
   L.addBox(x, z, w, d);

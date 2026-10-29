@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { createCoati, animateCoati, createFruit, createRifle, muzzleFlash } from './props.js';
 import { shootingRange } from './range.js';
 import { sfx } from './sfx.js';
+import { SCENES2, CONVOS2, BEATS2, ITEMS2 } from './story2.js';
 
 // ================================================================ items
 export const ITEMS = {
@@ -16,11 +17,12 @@ export const ITEMS = {
   certificate: { name: 'Medical Certificate', icon: '📄', desc: 'Diagnosis: chronic cardiac arrhythmia. Patient unfit for service.\nSigned, Dr. A. Herrera.\n\nCost: far more than it should have.' },
   madrigal: { name: 'Madrigal Business Card', icon: '💼', desc: 'PETER SCHULER — Madrigal Electromotive GmbH, Hannover.\nOn the back, a Santiago phone number written in fountain pen.' },
   passportG: { name: 'Passport — Gustavo Fring', icon: '🛂', desc: 'Gustavo Fring. Restaurateur. The photo is yours. The life is not — yet.' },
-  passportM: { name: 'Passport — Maximino Arciniega', icon: '🛂', desc: "Mateo's new life. He hates the photo." },
+  passportM: { name: 'Passport — Maximino Arciniega', icon: '🛂', desc: 'Max’s new life. He hates the photo.' },
   elenaPurse: { name: 'Doña Elena\u2019s Purse', icon: '👛', desc: 'Black leather, worn at the clasp. Heavy with a month of pension.' },
   leaflets: { name: '¿Dónde Está? Leaflets', icon: '📃', desc: 'A grainy photo of a man taken in 1974, and three words: Where is he?\nOn the back, in your handwriting: the student\u2019s name.' },
   pistol: { name: 'Service Pistol', icon: '🔫', desc: 'Army issue. Cleaned every Sunday, fired only on the range.\nIn a gunfight: hold Right-click / Q to aim, click / F to fire, R to reload.' },
   revolver: { name: 'Mateo\u2019s Revolver', icon: '🔫', desc: 'His father\u2019s. Old, heavy, and it pulls to the left.\nIn a gunfight: hold Right-click / Q to aim, click / F to fire, R to reload.' },
+  ...ITEMS2,
   chemicals: { name: 'Chemical Drums', icon: '🛢️', desc: 'Four blue drums from Bodega San Pablo. The label says cleaning fluid. It is not cleaning fluid.' },
 };
 
@@ -43,15 +45,15 @@ async function sellFood(T, G, vendor, foodId, pitch) {
   if (c !== 0) return;
   if (G.foodCount() >= FOOD_CARRY_LIMIT) {
     G.heroGesture();
-    await T.say('', '*Your hand goes to your wallet — and stops. Emilio puts the money back.*');
-    await T.say('Emilio', `I already carry ${G.foodCount()}. A man who hoards food is a man who wastes it.`);
+    await T.say('', `*Your hand goes to your wallet — and stops. ${G.heroName()} puts the money back.*`);
+    await T.say(G.heroName(), `I already carry ${G.foodCount()}. A man who hoards food is a man who wastes it.`);
     return;
   }
-  if (G.pesos < f.price) { await T.say('Emilio', 'Not enough. Of course not.'); return; }
+  if (G.pesos < f.price) { await T.say(G.heroName(), 'Not enough. Of course not.'); return; }
   if (G.player.hp >= 100 && G.foodCount() > 0) {
     G.heroGesture();
-    await T.say('', '*Emilio counts the coins twice — then closes his hand.*');
-    await T.say('Emilio', 'I am not hungry, and I already have something. No.');
+    await T.say('', `*${G.heroName()} counts the coins twice — then closes his hand.*`);
+    await T.say(G.heroName(), 'I am not hungry, and I already have something. No.');
     return;
   }
   G.addPesos(-f.price, f.name);
@@ -60,8 +62,8 @@ async function sellFood(T, G, vendor, foodId, pitch) {
   const again = await T.choice(['Buy another', 'That\u2019s enough'], vendor);
   if (again === 0) {
     G.heroGesture();
-    await T.say('', '*Emilio\u2019s hand freezes over his wallet. He snaps it shut.*');
-    await T.say('Emilio', 'One is enough. Every peso counts.');
+    await T.say('', `*${G.heroName()}\u2019s hand freezes over his wallet. He snaps it shut.*`);
+    await T.say(G.heroName(), 'One is enough. Every peso counts.');
   }
 }
 
@@ -1063,9 +1065,12 @@ const SCENES = {
     // Max falls backward into the pool
     m.noCollide = true;
     m.extraRot.x = -0.5;
-    await movePath(d, { position: m.pos, rotation: {} }, [[8.7, 0.25, -6.0], [7.2, -0.55, -6.0]], 4);
-    m.extraRot.x = -1.35;
+    await movePath(d, { position: m.pos, rotation: {} }, [[8.7, 0.25, -6.0], [7.2, 0.1, -6.0]], 4);
+    m.extraRot.x = -1.35; m.pos.y = 0.1; m.sync();
     sfx.splash();
+    const blood = d.prop(new THREE.Mesh(new THREE.CircleGeometry(1, 24), new THREE.MeshBasicMaterial({ color: '#7a0a0a', transparent: true, opacity: 0.55, depthWrite: false })), 7.2, 0.09, -6.0);
+    blood.rotation.x = -Math.PI / 2; blood.scale.setScalar(0.2);
+    d.every((dt) => { blood.scale.setScalar(Math.min(1.6, blood.scale.x + dt * 0.35)); });
     await sleep(d, 1.8);
     d.cam([5.6, 1.4, -10.4], [7.6, -0.1, -6.3], { to: [6.2, 1.2, -9.6], dur: 6 });
     await d.say('Don Eladio', 'Look at him, Generalísimo. Look.');
@@ -1073,8 +1078,6 @@ const SCENES = {
     await d.say('Don Eladio', 'Remember that.');
     await sleep(d, 1.2);
     await d.fadeOut(1.4);
-    await d.card('', 'Gustavo Fring buried his partner in Mexico.\nHe did not cry. He did not forget.\nHe waited.', 6);
-    G.endGame();
   },
 };
 
@@ -1269,22 +1272,25 @@ export const CONVOS = {
     if (S.at('bcReport')) {
       await T.say('Sargento Muñoz', '¡Gonzalez! The boy from the cerros. You are late — by eleven seconds.');
       await T.say('Emilio', 'Sí, mi Sargento.');
-      await T.say('Sargento Muñoz', 'Today: the course. Around both barracks, behind them, along the north fence and back to me. Under fifty-two seconds.');
+      await T.say('Sargento Muñoz', 'Today: the course. Around both barracks, behind them, along the north fence and back to me. Three firing points on the way — every target down before you move on. Under eighty seconds.');
       await T.say('Sargento Muñoz', 'Díaz López runs with you. His uncle is a colonel, so he thinks he is already an officer. Make him sweat.');
       G.emit('bc:report');
       return;
     }
     if (S.at('bcCourse')) {
       if (G.ow.run) return;
-      await T.say('Sargento Muñoz', 'Follow the markers. Run — hold Shift — and do not stop for anything. Ready, recruit?');
+      await T.say('Sargento Muñoz', 'Follow the markers. Run — hold Shift. At each firing point, the rifle: aim with the mouse, Click or F to fire. Ready, recruit?');
       const c = await T.choice(['"Ready."', '"Not yet, mi Sargento."'], 'The course');
       if (c !== 0) { await T.say('Sargento Muñoz', 'The enemy will not wait for you to be ready. Neither will I. Come back fast.'); return; }
       G.ow.startRun({
-        label: 'Obstacle course', time: 52, noRivalLose: true, rival: { look: 'victor', name: 'Víctor', time: 46 },
+        label: 'Obstacle course', time: 80, noRivalLose: true, rival: { look: 'victor', name: 'Víctor', time: 66 },
         points: [[-16, -15], [-36, -15], [-36, 32], [0, 35], [36, 32], [36, -15], [4, 2]],
+        // firing points: after reaching checkpoint N, shoot these targets before moving on
+        shoot: { 1: [[-38, -27], [-32, -30], [-27, -26]], 3: [[-6, 40.5], [5, 40.5]], 4: [[29, 39], [36, 40], [24, 37]] },
         onWin: (r) => {
-          if (r.beatRival) { G.setFlag('bc:beatVictor'); G.ui.toast(`${r.time.toFixed(1)} s — ahead of Víctor`, '¡Así se hace!'); }
-          else G.ui.toast(`${r.time.toFixed(1)} s — Víctor beat you`, 'Course passed');
+          const shots = r.misses ? ` · ${r.misses} missed shot${r.misses > 1 ? 's' : ''}` : ' · not one shot wasted';
+          if (r.beatRival) { G.setFlag('bc:beatVictor'); G.ui.toast(`${r.time.toFixed(1)} s — ahead of Víctor${shots}`, '¡Así se hace!'); }
+          else G.ui.toast(`${r.time.toFixed(1)} s — Víctor beat you${shots}`, 'Course passed');
           G.emit('bc:course');
         },
         onLose: (why) => { if (why === 'time') G.ui.toast('Too slow, Gonzalez! Talk to the sergeant and run it again.', 'Failed', true); },
@@ -1444,7 +1450,9 @@ let counterBusy = false;
 const pickLine = (a) => a[Math.floor(Math.random() * a.length)];
 
 // Which conversation a "use" spot opens.
-export const USE_CONVOS = { ticket: 'ticket', ledger: 'ledger', plan_board: 'launder', counter: 'counter', chemicals: 'chemicals' };
+export const USE_CONVOS = { ticket: 'ticket', ledger: 'ledger', plan_board: 'launder', counter: 'counter', chemicals: 'chemicals', 'ledger:desk': 'empireLedger' };
+Object.assign(CONVOS, CONVOS2);
+Object.assign(SCENES, SCENES2);
 
 // ================================================================ beats
 const SHOPS = [{ id: 'ernesto', x: -8.1, z: -29.75 }, { id: 'ines', x: -8.1, z: -17.25 }, { id: 'jacobo', x: 8.1, z: 44 }];
@@ -1457,10 +1465,10 @@ function nearestShop(S) {
 const CH0 = 'Prologue · Valparaíso, 1964';
 const CH1 = 'Chapter I · Cerro Barón';
 const CH1B = 'Chapter I · Regimiento Tacna';
-const CH2 = 'Chapter II · The General';
-const CH3 = 'Chapter III · Los Pollos Hermanos';
-const CH4 = 'Chapter IV · Blood in the Streets';
-const CH5 = 'Chapter V · Generalísimo';
+const CH2 = 'Chapter I · The General';
+const CH3 = 'Chapter II · Los Pollos Hermanos';
+const CH4 = 'Chapter II · Blood in the Streets';
+const CH5 = 'Chapter II · Generalísimo';
 
 export const BEATS = [
   { id: 'prologue', type: 'scene', chapter: CH0, play: SCENES.prologue },
@@ -1476,7 +1484,7 @@ export const BEATS = [
   // ---- boot camp (playable)
   { id: 'bcReport', type: 'goal', chapter: CH1B, look: 'emilioRecruit', text: 'Report to Sargento Muñoz on the parade ground', loc: 'cuartel', spawn: 'yard',
     target: { loc: 'cuartel', x: 4, z: 4.8 }, done: (e) => e === 'bc:report', banner: true },
-  { id: 'bcCourse', type: 'goal', chapter: CH1B, look: 'emilioRecruit', text: 'Run the obstacle course in under 52 seconds — talk to the sergeant to start', loc: 'cuartel', spawn: 'yard',
+  { id: 'bcCourse', type: 'goal', chapter: CH1B, look: 'emilioRecruit', text: 'Run the obstacle course and hit every target at the firing points, in under 80 seconds — talk to the sergeant to start', loc: 'cuartel', spawn: 'yard',
     target: { loc: 'cuartel', x: 4, z: 4.8 }, done: (e) => e === 'bc:course' },
   { id: 'bcRations', type: 'goal', chapter: CH1B, look: 'emilioRecruit', text: 'Bread is going missing from the mess. Find out who — the mess tables by the west barracks', loc: 'cuartel', spawn: 'yard',
     target: { loc: 'cuartel', x: -18.2, z: 17.8 }, done: (e) => e === 'bc:rations' },
@@ -1537,5 +1545,6 @@ export const BEATS = [
   { id: 'meetEladio', type: 'goal', chapter: CH5, look: 'emilioCivil', text: 'Meet Don Eladio by the pool', loc: 'hacienda', spawn: 'gate',
     target: { loc: 'hacienda', x: 11.9, z: -7 }, done: (e) => e === 'eladio', banner: true },
   { id: 'finale', type: 'scene', chapter: CH5, play: SCENES.finale, inPlace: true },
+  ...BEATS2,
 ];
 export const BEAT_INDEX = Object.fromEntries(BEATS.map((b, i) => [b.id, i]));

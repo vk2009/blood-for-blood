@@ -70,6 +70,19 @@ export const LOOKS = {
     sleeves: 'short', build: 1.1, height: 1.05, pockets: true },
   cni: { skin: '#d9a57f', shirt: '#2a2a30', pants: '#2a2a30', shoes: '#111111', hairStyle: 'short', hair: '#1c1c1c', glasses: true,
     tie: '#1a1a1a', beard: 'mustache', build: 1.08 },
+  // ---- Albuquerque (Chapters III–IV)
+  mike: { skin: '#f0cbb0', shirt: '#6a6458', pants: '#4a4a4e', shoes: '#2a2a2a', hairStyle: 'bald', hair: '#c8c4bc', build: 1.08, height: 1.0 },
+  victorCook: { skin: '#c68a62', shirt: '#2a2a2e', pants: '#2a2a2e', shoes: '#111111', hairStyle: 'short', hair: '#1c1c1c', build: 1.0, height: 1.0 },
+  tyrus: { skin: '#5a3a26', shirt: '#1a1a1e', pants: '#1a1a1e', shoes: '#111111', hairStyle: 'bald', hair: '#111', tie: '#1a1a1e', build: 1.3, height: 1.06 },
+  gale: { skin: '#f0cbb0', shirt: '#8a9a6a', pants: '#5a4a3a', shoes: '#4a3526', hairStyle: 'long', hair: '#4a3424', glasses: true, beard: 'mustache', beardColor: '#4a3424', build: 0.9 },
+  saul: { skin: '#e8bf9f', shirt: '#c8a83a', pants: '#5a6a8a', shoes: '#6b4a2b', hairStyle: 'short', hair: '#4a3424', tie: '#b5281c', build: 1.0 },
+  walter: { skin: '#f0cbb0', shirt: '#c8bc98', pants: '#6a5a42', shoes: '#4a3526', hairStyle: 'bald', hair: '#5a4a3a', glasses: true, beard: 'goatee', beardColor: '#5a4a3a', build: 1.02 },
+  jesse: { skin: '#f0cbb0', shirt: '#c8a020', pants: '#3a4a6a', shoes: '#1a1a1a', hairStyle: 'beanie', hatColor: '#2a2a2e', build: 0.88, height: 0.98, sleeves: 'short' },
+  dea: { skin: '#e0b08f', shirt: '#2a3a5a', pants: '#3a3a40', shoes: '#111111', hairStyle: 'short', hair: '#3a2a1c', build: 1.08 },
+  apd: { skin: '#c68a62', shirt: '#1f2a40', pants: '#1f2a40', shoes: '#111111', hairStyle: 'officer', hatColor: '#1f2a40', hair: '#1c1c1c', build: 1.05, pockets: true },
+  twin: { skin: '#b07a52', shirt: '#2a2a2e', pants: '#2a2a2e', shoes: '#3a2a1c', hairStyle: 'shaved', hair: '#111', build: 1.22, height: 1.06 },
+  hectorOld: { skin: '#b97f58', shirt: '#4a4a4a', pants: '#2a2a2a', shoes: '#111', hairStyle: 'short', hair: '#9a9a9a', beard: 'mustache', beardColor: '#9a9a9a', build: 1.0, height: 0.98 },
+  dealer: { skin: '#b07a52', shirt: '#4a5a6a', pants: '#2c3440', shoes: '#1a1a1a', hairStyle: 'beanie', hatColor: '#7a1f1f', build: 1.05, sleeves: 'short' },
   tomas: { skin: '#b97f58', shirt: '#6a6f52', pants: ARMY, shoes: '#111111', hairStyle: 'shaved', hair: '#1c1c1c', sleeves: 'short', build: 0.8, height: 0.98, pockets: true },
 };
 
@@ -112,6 +125,14 @@ export const PED_LINES = {
     '¡Y va a caer! ¡Y va a caer!',
     'They took my brother in ’73. Never came back.',
     'Get off the street, the soldiers are coming!',
+  ],
+  abq: [
+    'Hot one today.',
+    'Best chicken in the state, they say. Something in the batter.',
+    'You see the news? Another bust on the west side.',
+    'Excuse me, sir.',
+    'My cousin works at that laundry. Says the pay is too good.',
+    '*nods politely*',
   ],
   mexico: [
     'Don Eladio does not like to wait.',

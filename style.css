@@ -291,3 +291,26 @@ body.gunfight #fight-hint { display: none; }
 #ammo.show { display: block; }
 #ammo small { display: block; font: 600 10px/1 inherit; letter-spacing: 1.5px; text-transform: uppercase; opacity: 0.6; margin-top: 4px; }
 @media (max-width: 600px) { #gun-hint { white-space: normal; width: 90vw; text-align: center; } }
+
+/* ---- boss bar & empire panel (Chapters III–IV) ---- */
+#bossbar { position: absolute; top: 18px; left: 50%; transform: translateX(-50%); width: min(520px, 70vw); display: none; text-align: center; text-shadow: 0 1px 2px #000; }
+#bossbar.show { display: block; }
+#bossbar b { display: block; font: 900 15px/1 var(--display); letter-spacing: 3px; text-transform: uppercase; color: #ffd9a0; margin-bottom: 6px; }
+#bossbar .bb-bar { height: 10px; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.25); border-radius: 2px; overflow: hidden; }
+#boss-fill { height: 100%; width: 100%; background: linear-gradient(90deg, #8a1a12, #e0402a); transition: width .15s; }
+body.cinema #bossbar { display: none; }
+#empire { position: absolute; right: 22px; top: 300px; width: 196px; display: none; padding: 9px 11px 8px; background: rgba(0,0,0,0.55); border-left: 3px solid var(--gold); font-size: 11px; text-shadow: 0 1px 2px #000; }
+#empire.show { display: block; }
+#empire h4 { margin: 0 0 6px; font: 800 10px/1 inherit; letter-spacing: 2px; text-transform: uppercase; color: var(--gold); display: flex; justify-content: space-between; }
+#empire .er { display: grid; grid-template-columns: 62px 1fr 24px; align-items: center; gap: 6px; margin: 3px 0; }
+#empire .er span { opacity: 0.85; }
+#empire .er i { display: block; height: 6px; background: rgba(255,255,255,0.12); border-radius: 3px; overflow: hidden; }
+#empire .er i u { display: block; height: 100%; border-radius: 3px; }
+#empire .er em { font-style: normal; text-align: right; font-variant-numeric: tabular-nums; opacity: 0.9; }
+#empire .er.warn em { color: #ff6a5a; font-weight: 800; }
+#empire small { display: block; margin-top: 5px; opacity: 0.6; font-size: 10px; }
+body.fighting #empire, body.gunfight #empire { display: none; }
+.plate.enemy.heavy i { box-shadow: 0 0 10px 3px #ff2a1a; }
+.plate.enemy.heavy::after { content: 'DODGE'; display: block; text-align: center; font: 900 11px/1 var(--display); letter-spacing: 2px; color: #ff5a3a; margin-top: 3px; }
+.plate.enemy.exposed::after { content: 'RELOADING'; display: block; text-align: center; font: 900 11px/1 var(--display); letter-spacing: 2px; color: #ffe07a; margin-top: 3px; }
+@media (max-width: 700px) { #empire { top: auto; bottom: 120px; right: 10px; width: 160px; } }

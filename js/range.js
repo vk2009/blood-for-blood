@@ -14,7 +14,7 @@ const TARGET_TEX = (() => {
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
 })();
 
-function makeTarget() {
+export function makeTarget() {
   const g = new THREE.Group();          // pivot at the base: rotates up / down
   const post = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.2, 0.08), new THREE.MeshStandardMaterial({ color: '#5a4430', roughness: 0.9 }));
   post.position.y = 0.6; g.add(post);

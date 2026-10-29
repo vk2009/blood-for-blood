@@ -154,6 +154,15 @@ export class UI {
     this.bannerTimer = null;
   }
   cinema(on) { document.body.classList.toggle('cinema', on); }
+  // Big health bar at the top for bosses; boss(null) hides it.
+  boss(name, k = 1) {
+    const el = $('bossbar');
+    if (!name) { el.classList.remove('show'); return; }
+    el.classList.add('show');
+    $('boss-name').textContent = name;
+    $('boss-fill').style.width = `${Math.max(0, Math.min(1, k)) * 100}%`;
+  }
+  setCurrency(label) { document.querySelector('#money small').textContent = label; }
   showCard(title, sub = '') {
     this.el.cardTitle.textContent = title;
     this.el.cardSub.textContent = sub;
@@ -271,7 +280,7 @@ export class InventoryPanel {
     if (!this.entries.length) {
       this.list.innerHTML = '<li class="empty"><span class="ic">·</span>Empty pockets.</li>';
       h3.textContent = ''; big.textContent = '';
-      p.textContent = 'Emilio owns almost nothing. That is not an accident.';
+      p.textContent = this.emptyText || 'Emilio owns almost nothing. That is not an accident.';
       return;
     }
     this.entries.forEach((e, i) => {

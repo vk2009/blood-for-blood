@@ -11,6 +11,8 @@ import { Actor } from './director.js';
 import { mat } from './character.js';
 import { JOBS, COLLECTIBLES, KINDS, CRIME } from './sidejobs.js';
 import { sfx } from './sfx.js';
+import { makeTarget } from './range.js';
+import { createRifle, muzzleFlash } from './props.js';
 import { fmtPesos } from './ui.js';
 
 const $ = (id) => document.getElementById(id);
@@ -333,10 +335,78 @@ export class OpenWorld {
   endRun() {
     const r = this.run;
     if (!r) return;
+    this.endStation(r);
     r.beacons.forEach((b) => b.parent?.remove(b));
     r.rival?.a.remove();
     this.run = null;
     this.el.timer.classList.remove('show');
+  }
+  // Shooting station: at some checkpoints the run stops until every target is down.
+  // cfg.shoot = { [checkpointIndex]: [[x, z], ...] } — target positions.
+  startStation(r, spots) {
+    const G = this.G, cp = r.points[r.i - 1];
+    const st = { targets: [], left: spots.length, rifle: createRifle(), flash: muzzleFlash(), cool: 0, flashT: 0 };
+    st.rifle.position.set(-0.19, 1.34, 0.42);
+    st.rifle.add(st.flash); st.flash.position.set(0, 0.04, 0.62);
+    G.hero.root.add(st.rifle);
+    for (const [x, z] of spots) {
+      const pivot = new THREE.Group();
+      pivot.userData.dynamic = true;
+      pivot.position.set(x, 0, z);
+      pivot.rotation.y = Math.atan2(x - cp[0], z - cp[1]);
+      const t = makeTarget();
+      t.userData.want = 1; t.userData.state = 'up';
+      pivot.add(t);
+      r.L.root.add(pivot);
+      st.targets.push({ pivot, t });
+    }
+    G.aimCam = true;
+    document.getElementById('crosshair').classList.add('show');
+    G.ui.toast('Shoot every target to open the next checkpoint. Aim with the mouse, Click / F to fire.', 'Shooting station');
+    r.station = st;
+  }
+  endStation(r) {
+    const st = r.station;
+    if (!st) return;
+    st.rifle.parent?.remove(st.rifle);
+    for (const { pivot } of st.targets) pivot.parent?.remove(pivot);
+    this.G.aimCam = false;
+    this.G.hero.pose.point = 0;
+    document.getElementById('crosshair').classList.remove('show', 'hit');
+    r.station = null;
+  }
+  updateStation(r, dt) {
+    const G = this.G, st = r.station, I = G.input;
+    st.cool -= dt; st.flashT -= dt;
+    st.flash.visible = st.flashT > 0;
+    G.hero.pose.point = 1;
+    G.player.modelYaw = G.player.yaw;
+    for (const { t } of st.targets) {
+      const u = t.userData;
+      u.up += (u.want - u.up) * Math.min(1, dt * 9);
+      t.rotation.x = -Math.PI / 2 * (1 - u.up);
+    }
+    if ((I.pressed('Mouse0') || I.pressed('KeyF')) && st.cool <= 0) {
+      st.cool = 0.3; st.flashT = 0.06;
+      sfx.rifle(); G.shake = 0.1;
+      const ray = new THREE.Raycaster();
+      ray.setFromCamera({ x: 0, y: 0 }, G.camera);
+      const boards = st.targets.filter(({ t }) => t.userData.state === 'up').map(({ t }) => t.userData.board);
+      const hit = ray.intersectObjects(boards, false)[0];
+      if (hit) {
+        const g = hit.object.parent;
+        g.userData.state = 'hit'; g.userData.want = 0; st.left--;
+        sfx.ding();
+        const c = document.getElementById('crosshair');
+        c.classList.add('hit'); setTimeout(() => c.classList.remove('hit'), 120);
+      } else r.misses = (r.misses || 0) + 1;
+    }
+    if (st.left <= 0) {
+      this.endStation(r);
+      r.beacons[r.i] && (r.beacons[r.i].visible = true);
+      if (r.beacons[r.i + 1]) r.beacons[r.i + 1].visible = true;
+      G.ui.toast('Targets down — run!', 'Shooting station');
+    }
   }
   updateRun(dt) {
     const r = this.run, p = this.G.player.pos;
@@ -362,21 +432,26 @@ export class OpenWorld {
       R.a.update(dt);
     }
     const cp = r.points[r.i];
-    if (Math.hypot(p.x - cp[0], p.z - cp[1]) < r.radius) {
+    if (r.station) this.updateStation(r, dt);
+    else if (Math.hypot(p.x - cp[0], p.z - cp[1]) < r.radius) {
       r.beacons[r.i].visible = false;
       r.i++;
       sfx.ding();
       if (r.i >= r.points.length) {
-        const res = { time: r.t, beatRival: !r.rival || r.rival.d < r.rival.len };
+        const res = { time: r.t, misses: r.misses || 0, beatRival: !r.rival || r.rival.d < r.rival.len };
         const cb = r.onWin; this.endRun(); cb?.(res); return;
       }
-      r.beacons[r.i].visible = true;
-      if (r.beacons[r.i + 1]) r.beacons[r.i + 1].visible = true;
+      const spots = r.shoot?.[r.i - 1];
+      if (spots) { r.beacons[r.i].visible = false; if (r.beacons[r.i + 1]) r.beacons[r.i + 1].visible = false; this.startStation(r, spots); }
+      else {
+        r.beacons[r.i].visible = true;
+        if (r.beacons[r.i + 1]) r.beacons[r.i + 1].visible = true;
+      }
     }
     if (r.rival && r.rival.d >= r.rival.len && !r.noRivalLose) { const cb = r.onLose; this.endRun(); cb?.('rival'); return; }
     if (left <= 0) { const cb = r.onLose; this.endRun(); cb?.('time'); return; }
     for (const [k, b] of r.beacons.entries()) if (b.visible) b.children[0].material.opacity = k === r.i ? 0.3 + Math.sin(r.t * 6) * 0.08 : 0.12;
-    this.el.timer.innerHTML = `<small>${r.label || 'Run'}</small><b class="${left < 8 ? 'low' : ''}">${fmtTime(Math.max(0, left))}</b><span>Checkpoint ${r.i + 1}/${r.points.length}${r.rival ? ` · ${r.rival.a.pos.distanceTo(p) < 3 ? 'neck and neck' : (r.rival.d / r.rival.len > this.progress(r) ? `${r.rival.name} is ahead` : 'you are ahead')}` : ''}</span>`;
+    this.el.timer.innerHTML = `<small>${r.label || 'Run'}</small><b class="${left < 8 ? 'low' : ''}">${fmtTime(Math.max(0, left))}</b><span>${r.station ? `Targets left: ${r.station.left}` : `Checkpoint ${r.i + 1}/${r.points.length}`}${r.rival ? ` · ${r.rival.a.pos.distanceTo(p) < 3 ? 'neck and neck' : (r.rival.d / r.rival.len > this.progress(r) ? `${r.rival.name} is ahead` : 'you are ahead')}` : ''}</span>`;
   }
   progress(r) {
     const pts = [[r.startPos.x, r.startPos.z], ...r.points];
@@ -439,6 +514,7 @@ export class OpenWorld {
       id: cfg.id, name: cfg.name, minX: x - s, maxX: x + s, minZ: z - s, maxZ: z + s, transient: true,
       thugs: cfg.thugs.map((t) => ({ look: t.look, x: x + (t.dx || 0), z: z + (t.dz || 0), yaw: t.yaw ?? 0, weapon: t.weapon })),
       barks: cfg.barks, reward: cfg.reward || 0, speaker: cfg.speaker, loseMsg: cfg.loseMsg, guns: cfg.guns, noEscape: cfg.noEscape, L,
+      waves: cfg.waves?.map((w) => w.map((t) => ({ ...t, x: x + (t.dx || 0), z: z + (t.dz || 0) }))), waveMsg: cfg.waveMsg,
     };
     for (const t of d.thugs) { const f = this.freeNear(L, t.x, t.z); t.x = f[0]; t.z = f[1]; }
     delete this.state.flags['cleared:' + d.id];
@@ -537,7 +613,7 @@ export class OpenWorld {
       hero.pose.jab = k < 0.35 ? k / 0.35 : Math.max(0, 1 - (k - 0.35) / 0.65);
       if (this.punch <= 0) hero.pose.jab = 0;
     }
-    if (L.interior || G.mode !== 'play') return;
+    if (L.interior || G.mode !== 'play' || this.run?.station || G.noFists) return;
     const want = I.pressed('KeyF') || (I.pressed('Mouse0') && I.locked);
     if (!want || this.punch > 0) return;
     this.punch = 0.32;
@@ -556,6 +632,7 @@ export class OpenWorld {
     for (const n of L.npcs) if (Math.hypot(n.pos.x - p.pos.x, n.pos.z - p.pos.z) < 14) this.flee(n, 5);
     this.addStat('assaults');
     const cfg = CRIME[L.id];
+    if (G.empire?.E && G.S.past('burial')) G.empire.add('heat', 2, 'Seen hitting people in the street');
     if (G.heroLook === 'general') {
       this.addStat('fear');
       G.ui.toast('Nobody stops a General. They only remember his face.', 'Fear', true);
@@ -593,14 +670,14 @@ export class OpenWorld {
       const a = Math.random() * Math.PI * 2, r = armed ? rnd(16, 22) : rnd(10, 14);
       let x = p.x + Math.cos(a) * r, z = p.z + Math.sin(a) * r;
       [x, z] = this.freeNear(L, x, z);
-      thugs.push({ look: 'carabinero', dx: x - p.x, dz: z - p.z, yaw: Math.atan2(p.x - x, p.z - z) });
+      thugs.push({ look: CRIME[L.id]?.policeLook || 'carabinero', dx: x - p.x, dz: z - p.z, yaw: Math.atan2(p.x - x, p.z - z) });
     }
     this.police = this.startStreetFight({
       id: `cops${++this.crimeN}`, name: 'Carabineros', at: [p.x, p.z], thugs, size: 30, speaker: 'Carabinero', guns: armed,
-      barks: armed ? ['¡Alto! ¡Carabineros! Drop the weapon!', 'He is armed — take cover!'] : ['¡Alto! ¡Carabineros! On the ground!', '¡Al suelo, delincuente!', 'Hands where I can see them!'],
+      barks: CRIME[L.id]?.policeBarks || (armed ? ['¡Alto! ¡Carabineros! Drop the weapon!', 'He is armed — take cover!'] : ['¡Alto! ¡Carabineros! On the ground!', '¡Al suelo, delincuente!', 'Hands where I can see them!']),
       loseMsg: armed ? 'The Carabineros brought you down in the street.' : 'The Carabineros beat you unconscious and dragged you to a cell.',
     });
-    this.G.ui.toast(armed ? 'They are armed — and so are you. Or run far enough and they lose you.' : 'Run far enough and they lose you.', 'Carabineros!', true);
+    this.G.ui.toast(armed ? 'They are armed — and so are you. Or run far enough and they lose you.' : 'Run far enough and they lose you.', CRIME[L.id]?.policeName || 'Carabineros!', true);
   }
   endPolice() { if (this.police) { this.removeDanger(this.police); this.police = null; } }
   renderHeat() {
@@ -660,6 +737,7 @@ export class OpenWorld {
     if (s) {
       const job = this.jobs.get(s.id);
       job.steps?.[s.step]?.on?.(e, this.api.get(s.id));
+      if (this.state.side === s) job.onEvent?.(e, this.api.get(s.id));
     }
   }
 
@@ -767,8 +845,23 @@ export class OpenWorld {
       <li><span>Side jobs done</span><b>${s.jobs || 0}</b></li>
       <li><span>Pesos found in the street</span><b>$ ${fmtPesos(s.found || 0)}</b></li>
       <li><span>Reputation</span><b>${rep}</b></li>
-      ${bondTxt ? `<li><span>Mateo</span><b>${bondTxt}</b></li>` : ''}
+      ${bondTxt && !S.past('finale') ? `<li><span>${S.past('newNames') ? 'Max' : 'Mateo'}</span><b>${bondTxt}</b></li>` : ''}
     </ul></section>`);
+    const E = st.empire;
+    if (E && S.past('burial')) {
+      const crew = ['victor', 'tyrus', 'mike', 'gale', 'saul'].filter((k) => st.flags['crew:' + k]).length;
+      const strikes = [
+        ['Llantera El Tío', st.flags['job:revTires'], 'Recruit Tyrus (or reach 45 fear) — he brings you the job'],
+        ['The Shipment', st.flags['job:revHighway'], 'Recruit Mike — he brings you the job'],
+        ['The Man Who Held Me Down', st.flags['job:revRogelio'], 'Finish two strikes, and keep Victor — he finds the name'],
+      ];
+      rows.push(`<section><h3>Empire</h3><ul class="j-stats">
+        <li><span>Week</span><b>${E.week}</b></li>
+        <li><span>Reputation · Product · Fear · Heat</span><b>${E.rep} · ${E.product} · ${E.fear} · ${E.heat}</b></li>
+        <li><span>Restaurants · routes</span><b>${E.restaurants} · ${E.routes}</b></li>
+        <li><span>Crew</span><b>${crew}/5</b></li>
+      </ul><ul class="j-jobs">${strikes.map(([t, done, how]) => `<li class="${done ? 'done' : ''}"><b>${done ? '✓' : '•'}</b><span>${esc(t)}<small>${esc(done ? 'Done' : how)}</small></span></li>`).join('')}</ul></section>`);
+    }
     this.el.journal.innerHTML = rows.join('');
   }
 }

@@ -51,4 +51,7 @@ export const sfx = {
   ding() { setTimeout(() => tone(1500, 0.25, { type: 'triangle', gain: 0.08 }), 120); },
   kick() { noise(0.14, { freq: 450, gain: 0.6 }); tone(70, 0.2, { gain: 0.45, slide: -40 }); },
   thump() { tone(50, 0.6, { gain: 0.45, slide: -20 }); },
+  bell() { for (const [f, d] of [[1760, 0], [2640, 0], [1760, 260], [2640, 260]]) setTimeout(() => tone(f, 0.5, { type: 'triangle', gain: 0.07 }), d); },
+  tick() { tone(2400, 0.03, { type: 'square', gain: 0.05 }); },
+  boom() { noise(1.4, { freq: 500, gain: 1, decay: 1.3 }); tone(40, 1.2, { gain: 0.7, slide: -20 }); },
 };

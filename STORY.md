@@ -317,3 +317,32 @@ The bulk of the game: open-world hub + management layer. Gus builds Los Pollos i
 3. **Who kills Max?** Your notes say Eladio. This plan has Eladio order it and Hector shoot (matches the show). Keep or change?
 4. **How long is Chapter III?** Is it a full management game, or a series of missions with light stat-building?
 5. **Is there an optional Chapter IV (the revenge)?** The title suggests it.
+
+---
+
+## 11. Built: the rest of the story (testing branch)
+
+The theme of everything after the pool is **revenge for Max**. The empire exists to make that revenge possible.
+
+- **Chapter II ending** — After the pool, Gus can reach for Hector's pistol or go for Hector, but he is always forced out. He buries Max in the desert, along with Emilio (the coffee tin and half of Mamá's photo). From the passports on, he is only ever called Gustavo, and Mateo only Max.
+- **Chapter III · Empire** (Albuquerque) — The ledger on the desk in Gus's office tracks Reputation, Product, Fear and Heat (0–100), plus money in dollars. You get two moves a week, then end the week to collect income and pay payroll and Eladio's 20% cut.
+  - Heat at 100 triggers a DEA raid (a timed mission; lose it and you lose half the money).
+  - Low reputation plus low fear triggers a mutiny gunfight. If both collapse completely, it's game over.
+  - Crew missions: Victor (parking-lot fight), Tyrus (boss fistfight), Mike (find the leak, chase, half or full measure), Gale (scholarship and test cook), Saul (chase down a witness).
+  - Strikes on the Salamancas: the tire shop raid (the ledger of names), the courier shipment (chase plus gunfight), and Rogelio, the man who held Gus down at the pool (boss fight).
+  - The chapter ends when you have 5 crew, 3 strikes, 3 restaurants and 50 product. Hector comes to collect; Gus just looks at him.
+- **Chapter IV · Catalyst / Blood for Blood**
+  - Walter (killed Tuco). Investigate the Salamanca twins (3 informants), then choose an approach: ambush both, or tip off the DEA and fight one. Either way it's a boss fistfight with unblockable axe swings you must dodge.
+  - Gale dies (off-screen). Eladio's men ambush the truck and Victor dies.
+  - Gus fires Walter, but Jesse won't cook if Walter is killed, so you have to find another way.
+  - Mexico with Mike and Jesse: the tequila, a gunfight down the drive, then a boss gunfight with Don Eladio (hurt him while he reloads, propane tanks, reinforcements). He ends up in his own pool.
+- **Final showdown at Rancho Salamanca, in three stages:**
+  1. A gunfight at the gate, with waves of men and propane tanks.
+  2. Walter's bomb: search the sheds by following the ticking, then cut the wires in order.
+  3. Hector: a boss who rings his bell for reinforcements and is only exposed while reloading.
+  - Ending: Hector, Walter's fate (exile or Mike), Gus running the show, and the bell left on Max's grave.
+- **Fixes:**
+  - Combat is harder: tougher and faster enemies, combo breakers, heavier hits, and bosses.
+  - Loading a save inside a fight zone now offers "E Fight…".
+  - The obstacle course now has three shooting stations.
+  - The hacienda pool is visible.
