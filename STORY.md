@@ -333,6 +333,7 @@ The theme of everything after the pool is **revenge for Max**. The empire exists
   - The chapter ends when you have 5 crew, 3 strikes, 3 restaurants and 50 product. Hector comes to collect; Gus just looks at him.
 - **Chapter IV · Catalyst / Blood for Blood**
   - Walter (killed Tuco). Investigate the Salamanca twins (3 informants), then choose an approach: ambush both, or tip off the DEA and fight one. Either way it's a boss fistfight with unblockable axe swings you must dodge.
+  - Juan Bolsa (Eladio's man in Juárez, who sent the twins and stood at the pool): a gunfight and boss at his villa.
   - Gale dies (off-screen). Eladio's men ambush the truck and Victor dies.
   - Gus fires Walter, but Jesse won't cook if Walter is killed, so you have to find another way.
   - Mexico with Mike and Jesse: the tequila, a gunfight down the drive, then a boss gunfight with Don Eladio (hurt him while he reloads, propane tanks, reinforcements). He ends up in his own pool.
@@ -340,7 +341,7 @@ The theme of everything after the pool is **revenge for Max**. The empire exists
   1. A gunfight at the gate, with waves of men and propane tanks.
   2. Walter's bomb: search the sheds by following the ticking, then cut the wires in order.
   3. Hector: a boss who rings his bell for reinforcements and is only exposed while reloading.
-  - Ending: Hector, Walter's fate (exile or Mike), Gus running the show, and the bell left on Max's grave.
+  - Ending: Hector names the twins and Juan Bolsa, and Gus answers: "This is what comes of blood for blood, Hector." Then Walter's fate (exile or Mike), Gus running the show, and the bell left on Max's grave.
 - **Fixes:**
   - Combat is harder: tougher and faster enemies, combo breakers, heavier hits, and bosses.
   - Loading a save inside a fight zone now offers "E Fight…".

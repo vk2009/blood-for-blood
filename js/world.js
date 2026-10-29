@@ -1046,12 +1046,50 @@ function buildRanch() {
   return L;
 }
 
+// ================================================================ JUAN BOLSA'S VILLA (Ciudad Juárez, Chapter IV)
+function buildJuarez() {
+  seedRandom(2008);
+  const L = prep(new Loc('juarez', 'Villa Bolsa', { bounds: { minX: -30, maxX: 30, minZ: -36, maxZ: 34 }, env: OUT('night'), pedCount: 0, camMax: 8 }));
+  L.region = 'Ciudad Juárez, Mexico';
+  ground(L, TEX.grass, 50);
+  flat(26, 50, std({ map: withRepeat(TEX.concrete, 6, 12), roughness: 0.8, color: '#e0d2b8' }), L.root, 0, 0.02, 0);
+  mesas(L, 30, 160, 280);
+  const stucco = mat('#e8d4b4', 0.92), tileRoof = mat('#a8483a', 0.85);
+  for (const [x, z, w, d] of [[0, -36.5, 61, 1], [-30.5, 0, 1, 73], [30.5, 0, 1, 73], [-18, 34.5, 25, 1], [18, 34.5, 25, 1]]) {
+    const m = mesh(box(w, 3, d), stucco, L.root, x, 1.5, z); L.addBox(x, z, w, d); L.occluders.push(m);
+  }
+  const villa = mesh(box(30, 7, 11), stucco, L.root, 0, 3.5, -28); L.addBox(0, -28, 30, 11); L.occluders.push(villa);
+  mesh(box(31, 0.5, 12), tileRoof, L.root, 0, 7.2, -28);
+  for (let x = -12; x <= 12; x += 4) { mesh(box(0.6, 3.2, 0.6), stucco, L.root, x, 1.6, -21.8); L.addBox(x, -21.8, 0.6, 0.6); }
+  // fountain in the middle of the courtyard
+  const f = mesh(new THREE.CylinderGeometry(2.4, 2.6, 0.8, 20), stucco, L.root, 0, 0.4, -6); L.addBox(0, -6, 4.6, 4.6); L.occluders.push(f);
+  mesh(new THREE.CylinderGeometry(2.2, 2.2, 0.05, 20), std({ color: '#3a8ab0', roughness: 0.1, emissive: '#0a3a4a', emissiveIntensity: 0.4 }), L.root, 0, 0.76, -6, false);
+  mesh(new THREE.CylinderGeometry(0.3, 0.4, 1.6, 10), stucco, L.root, 0, 1.2, -6);
+  for (const [x, z] of [[-14, 18], [14, 16], [-16, -12], [16, -14], [-8, 26], [8, 26]]) palm(L, x, z, rr(0.9, 1.1));
+  for (const [x, z, w, d] of [[-6, 16, 3, 1.2], [6, 12, 3, 1.2], [-11, 6, 1.2, 3], [11, 4, 1.2, 3], [-6, -15, 3, 1.2], [7, -16, 3, 1.2]]) cover(L, x, z, w, d, 1.2, '#b89a72');
+  parkCar(L, -8, 29, 0.2, '#1a1a1e', 'suv'); parkCar(L, 9, 28, -0.1, '#e8e8e4', 'sedan');
+  for (const [x, z] of [[-9, 10], [9, 6], [-12, -18], [12, -19]]) addPropane(L, x, z);
+  for (const [i, [x, z]] of [[-20, 20], [20, 20], [-20, -16], [20, -16]].entries()) barrelFire(L, x, z, i % 2 === 0);
+  L.zones.push({ name: 'Courtyard', minX: -30, maxX: 30, minZ: -36, maxZ: 34 });
+  L.dangers.push({ id: 'bolsaVilla', name: 'Courtyard', minX: -26, maxX: 26, minZ: -24, maxZ: 22, guns: true, noEscape: true, speaker: 'Juan Bolsa',
+    when: (S) => S.at('bolsaHit'), loseMsg: 'Juan Bolsa’s bodyguards held the courtyard. Hector Salamanca sent flowers to the funeral.',
+    thugs: [{ look: 'bolsa', x: 0, z: -18, yaw: 0, boss: true, hp: 380, name: 'Juan Bolsa' }, { look: 'cartel', x: -8, z: 8, yaw: Math.PI }, { look: 'cartel', x: 8, z: 4, yaw: Math.PI }, { look: 'cartel', x: -12, z: -10, yaw: 0 }],
+    waves: [[{ look: 'cartel', x: -22, z: -20 }, { look: 'cartel', x: 22, z: -20 }, { look: 'cartel', x: 0, z: -22 }]],
+    summon: [{ x: -14, z: -22 }, { x: 14, z: -22 }], summonLook: 'cartel', summonMsg: 'Juan Bolsa shouts for his bodyguards.',
+    waveMsg: 'More bodyguards run out of the villa!',
+    barks: ['¿Fring? Here? In my house?', 'You were supposed to stay in Albuquerque, chicken man.'], reward: 0 });
+  L.spawns.gate = { x: 0, z: 31, yaw: Math.PI };
+  L.spawns.default = L.spawns.gate;
+  L.finalize();
+  return L;
+}
+
 const BUILDERS = {
   childhood: buildChildhood, room1: buildRoom1, barrio: buildBarrio, train: buildTrainSet, cuartel: buildCuartel,
   house2: buildHouse2, santiago: buildSantiago, facility: buildFacility,
   pollos: () => buildPollosStreet(false), riot: () => buildPollosStreet(true), pollosIn: buildPollosInside,
   airstrip: buildAirstrip, hacienda: buildHacienda,
-  desert: buildDesert, abq: buildAbq, pollosABQ: buildPollosABQ, ranch: buildRanch,
+  desert: buildDesert, abq: buildAbq, pollosABQ: buildPollosABQ, ranch: buildRanch, juarez: buildJuarez,
 };
 const cache = {};
 export function getLocation(id) {

@@ -203,6 +203,54 @@ export const SCENES2 = {
     await d.fadeOut(0.6);
   },
 
+  // After the twins: who sent them north? Juan Bolsa — Eladio's man in Juárez.
+  async bolsaIntel(d, G) {
+    d.set('pollosABQ');
+    G.setMood('dim');
+    const g = d.actor('gus', 'emilioCivil', 0, 0, 0); sitAt(g, 5.6, -5.2, 0);
+    const m = d.actor('mike', 'mike', 4.4, -2.6, Math.PI);
+    d.cam([3.6, 1.8, -1.8], [5.4, 1.0, -4.6]);
+    await d.fadeIn(0.8);
+    if (G.S.flag('twins:dea')) await d.say('Mike Ehrmantraut', 'The one the DEA picked up never made it to his arraignment. So that is both of Tuco’s cousins.');
+    else await d.say('Mike Ehrmantraut', 'Both twins. Nobody in the motel saw a thing. Nobody ever does.');
+    await d.say('Mike Ehrmantraut', 'I went through the black car. Phone, a hotel receipt from Juárez. And a name. Juan Bolsa.');
+    await d.say('Gustavo', 'Don Eladio’s man on the border. He collects for the cartel. He gave the twins Walter’s name — and he let them cross with my routes.');
+    await d.say('Mike Ehrmantraut', 'He was at the pool, too. In ’89. Standing behind Eladio with a drink in his hand.');
+    d.cam([6.6, 1.3, -3.6], [5.6, 1.15, -5.0]);
+    await sleep(d, 1.0);
+    await d.say('Gustavo', '(I remember the drink. I remember the ice in it.)');
+    await d.say('Gustavo', 'Juan Bolsa will be my message to the Salamancas, Mike. Hector will know whose blood paid for whose.');
+    await d.say('Mike Ehrmantraut', 'He lives in a walled villa in Juárez. Eight, ten men. You want me to—');
+    await d.say('Gustavo', 'No. This one I do myself.');
+    await d.fadeOut(0.8);
+    G.setMood(null);
+    await d.card('Ciudad Juárez', 'The same night.', 3);
+  },
+
+  async bolsaEnd(d, G) {
+    G.hideHero(true);
+    G.clearFallen();
+    G.setMood('night');
+    const P = G.player.pos;
+    const g = d.actor('gus', 'emilioCivil', P.x, P.z, G.player.modelYaw);
+    const b = d.actor('bolsa', 'bolsa', 0, -15, 0);
+    d.pose(b, 'sit', 0.6, 0); b.noCollide = true;
+    d.cam([P.x + 3, 2, P.z + 3], [0, 1, -15]);
+    await d.walk(g, 0, -13.2, 1.4);
+    d.face(g, b); d.face(b, g);
+    d.cam([1.6, 1.2, -12.4], [0, 1.0, -15]);
+    await d.say('Juan Bolsa', 'Fring… the twins were Hector’s idea. I only gave them a name. Business, Gustavo. Only business.');
+    await d.say('Gustavo', 'You stood behind Don Eladio with a drink while Max died. Was that business too?');
+    await d.say('Juan Bolsa', '…Hector will kill you for this.');
+    await d.say('Gustavo', 'Hector will try.');
+    await d.say('', '*Gustavo turns his back. Behind him, the fountain keeps running. He does not hear anything else.*');
+    G.setFlag('bolsa:dead');
+    G.empire.apply({ fear: 15, heat: 8 }, 'Juan Bolsa is dead');
+    await d.fadeOut(1);
+    G.setMood(null);
+    G.hideHero(false);
+  },
+
   async galeDies(d, G) {
     d.set('pollosABQ');
     G.setMood('dim');
@@ -474,6 +522,7 @@ export const SCENES2 = {
     await d.say('Gustavo', 'Everything is personal, Walter. Go home to your family. While you still have one.');
     d.walk(w, 16, -29, 3).then(() => d.drop('walter'));
     d.cam([-1.6, 1.6, -24.4], [0, 1.55, -27.6]);
+    await d.say('Hector', 'Leonel. Marco. Juan Bolsa. My nephews, and my friend. I know it was you, chileno. *Ding.*');
     await d.say('Hector', 'Twenty years ago I shot your friend. He fell in the water like a sack of flour. *Ding.*');
     await d.say('Hector', 'Look at me, chileno.');
     d.cam([1.0, 1.7, -2.6], [0, 1.6, -4.0]);
@@ -501,6 +550,10 @@ export const SCENES2 = {
     await d.say('Gustavo', 'Do you remember his name?');
     await d.say('Hector', '…The chemist. Max.');
     await d.say('Gustavo', 'Maximino Arciniega. Mateo Zagal. My brother.');
+    await d.say('Hector', '*Ding.* …Leonel. Marco. Juan Bolsa. Eladio. All of them. For one chemist.');
+    d.cam([0.9, 1.65, -21.6], [0, 1.6, -19.2]);
+    await d.say('Gustavo', 'This is what comes of blood for blood, Hector.');
+    await d.say('Gustavo', 'Sangre por sangre.');
     const c = await d.choose(['“Look at me.”', 'Take the bell from his hand'], 0, 'Hector Salamanca');
     if (c === 0) await d.say('Gustavo', 'Look at me, Hector. Look at me.');
     G.give('bell');
@@ -715,6 +768,10 @@ export const BEATS2 = [
   { id: 'cousinsFight', type: 'goal', chapter: CH_IV, look: 'emilioCivil', loc: 'abq', spawn: 'pollos',
     text: (S) => (S.flag('twins:dea') ? 'One twin escaped the DEA — finish him in the Desert Sands lot. When the axe goes up, dodge (Space)' : 'The Salamanca twins wait in the Desert Sands lot. When the axe goes up, dodge (Space)'),
     target: { loc: 'abq', x: 23, z: -9 }, done: (e) => e === 'won:twins2' || e === 'won:twins1' },
+  { id: 'bolsaIntel', type: 'scene', chapter: CH_IV, play: SCENES2.bolsaIntel },
+  { id: 'bolsaHit', type: 'goal', chapter: CH_IV, look: 'emilioCivil', mood: 'night', loc: 'juarez', spawn: 'gate', banner: true,
+    text: 'Juan Bolsa — get through his bodyguards and finish him by the villa. Shoot when he reloads', target: { loc: 'juarez', x: 0, z: -16 }, done: (e) => e === 'won:bolsaVilla' },
+  { id: 'bolsaEnd', type: 'scene', chapter: CH_IV, play: SCENES2.bolsaEnd, inPlace: true },
   { id: 'galeDies', type: 'scene', chapter: CH_IV, play: SCENES2.galeDies },
   { id: 'ambushVictor', type: 'goal', chapter: CH_IV, look: 'emilioCivil', loc: 'abq', spawn: 'pollos', banner: true,
     text: 'Eladio’s sicarios hit the Los Pollos truck at the east end of Central. Get to Victor', target: { loc: 'abq', x: 82, z: 0 }, done: (e) => e === 'won:truckAmbush' },

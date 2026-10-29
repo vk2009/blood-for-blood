@@ -81,6 +81,7 @@ export const LOOKS = {
   dea: { skin: '#e0b08f', shirt: '#2a3a5a', pants: '#3a3a40', shoes: '#111111', hairStyle: 'short', hair: '#3a2a1c', build: 1.08 },
   apd: { skin: '#c68a62', shirt: '#1f2a40', pants: '#1f2a40', shoes: '#111111', hairStyle: 'officer', hatColor: '#1f2a40', hair: '#1c1c1c', build: 1.05, pockets: true },
   twin: { skin: '#b07a52', shirt: '#2a2a2e', pants: '#2a2a2e', shoes: '#3a2a1c', hairStyle: 'shaved', hair: '#111', build: 1.22, height: 1.06 },
+  bolsa: { skin: '#c68a62', shirt: '#e8e2d2', pants: '#3a3a40', shoes: '#4a3526', hairStyle: 'short', hair: '#1c1c1c', beard: 'mustache', tie: '#2a2a2e', glasses: true, build: 1.05 },
   hectorOld: { skin: '#b97f58', shirt: '#4a4a4a', pants: '#2a2a2a', shoes: '#111', hairStyle: 'short', hair: '#9a9a9a', beard: 'mustache', beardColor: '#9a9a9a', build: 1.0, height: 0.98 },
   dealer: { skin: '#b07a52', shirt: '#4a5a6a', pants: '#2c3440', shoes: '#1a1a1a', hairStyle: 'beanie', hatColor: '#7a1f1f', build: 1.05, sleeves: 'short' },
   tomas: { skin: '#b97f58', shirt: '#6a6f52', pants: ARMY, shoes: '#111111', hairStyle: 'shaved', hair: '#1c1c1c', sleeves: 'short', build: 0.8, height: 0.98, pockets: true },
