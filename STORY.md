@@ -354,3 +354,29 @@ The theme of everything after the pool is **revenge for Max**. The empire exists
 - **Reputation 50+:** Gus starts each fight at full health.
 - **Ranch bomb timer:** reputation 50+ adds 15 seconds (Mike's informant). Heat 70+ takes 15 seconds off (the DEA is tailing him).
 The journal lists which of these are active.
+
+---
+
+## 12. Revised structure (`revised` branch)
+
+The story is now told around **Gus's revenge**. It opens on Max's death; everything after is the hunt for the men at the pool, and Emilio's life in Chile returns as **playable memories** between the present-day chapters. Scenes and missions are unchanged — `js/revised.js` sets the order, marks each beat *present* or *past*, and adds short bridges into and out of each memory.
+
+| # | Era | Section | Contents |
+|---|---|---|---|
+| 1 | Present | **Prologue · The Pool — Mexico, 1986** | Cold open → meet Don Eladio → Max is shot → leave the hacienda → bury Max, vow revenge |
+| 2 | Memory | Valparaíso, 1964–1976 | Coati, Mamá, the room, the alleys, the train |
+| 3 | Present | **Chapter I · Empire** | Albuquerque, the ledger |
+| 4 | Memory | Regimiento Tacna, 1976–1980 | Boot camp, Víctor, the rise |
+| 5 | Present | Chapter I · Empire | Build the empire; Hector comes to collect |
+| 6 | Memory | The General, 1981 | Extortion, the market, meeting Mateo, the discharge |
+| 7 | Present | **Chapter II · Catalyst** | The twins, Juan Bolsa |
+| 8 | Memory | Los Pollos Hermanos, 1982–1985 | The plan, the restaurant, Schuler |
+| 9 | Present | Chapter II · Catalyst | Gale, Victor, firing Walter |
+| 10 | Memory | Blood in the Streets, 1986 | The revolt, new names |
+| 11 | Present | **Chapter III · Blood for Blood** | Mexico again, Eladio, Rancho Salamanca |
+
+**Memory rules**
+- Memories are shown with a faded sepia look and a "MEMORY" label on the right edge.
+- Present day and memories keep **separate wallets, pockets and food**: dollars and Gus's things now; pesos and Emilio's things then. Health refills when the era changes.
+- Gus starts the cold open still carrying the coffee tin and Mamá's photo; the memories explain why, and he buries them with Max.
+- The empire HUD, heat and journal empire lines only appear in the present.

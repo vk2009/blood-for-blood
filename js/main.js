@@ -275,7 +275,19 @@ function setHeroLook(look) {
   G.hero = hero;
 }
 
-const state = { beat: 0, inv: [], pesos: 0, flags: {}, food: {}, stats: {}, side: null, empire: null };
+const state = { beat: 0, inv: [], pesos: 0, flags: {}, food: {}, stats: {}, side: null, empire: null, era: 'present', eras: {} };
+
+// Present day and the memories of Chile keep their own wallet, pockets and food:
+// dollars and Gus's things now, pesos and Emilio's things then.
+function setEra(era) {
+  if (state.era === era) { document.body.classList.toggle('memory', era === 'past'); return; }
+  state.eras[state.era] = { pesos: state.pesos, inv: state.inv, food: state.food };
+  const e = state.eras[era] || { pesos: 0, inv: [], food: {} };
+  state.pesos = e.pesos; state.inv = e.inv; state.food = e.food;
+  state.era = era;
+  player.hp = PLAYER_HP; ui.setHealth(1);
+  document.body.classList.toggle('memory', era === 'past');
+}
 let loc = null;
 let peds = [];
 let mode = 'title';      // title | play | talk | scene | fight | gameover | ending
@@ -293,6 +305,7 @@ const S = {
   playerPos: () => player.pos,
   stat: (k) => state.stats[k] || 0,
   empire: () => state.empire,
+  present: () => state.era !== 'past',
 };
 const beatText = (b) => (typeof b?.text === 'function' ? b.text(S) : b?.text || '');
 
@@ -352,7 +365,7 @@ const G = {
   endGame() { showEnding(); },
   gameOver: (why) => gameOver(why),
   // After the passports, Emilio is Gustavo — everywhere.
-  heroName: () => (S.past('newNames') ? 'Gustavo' : 'Emilio'),
+  heroName: () => (state.era === 'past' ? 'Emilio' : 'Gustavo'),
   aimCam: false,
   tickers: new Set(),          // per-frame hooks for special objectives (bomb hunt…)
   placePlate,
@@ -474,8 +487,10 @@ function startBeat(i, from = null) {
   const b = BEATS[i];
   if (!b) return;
   ui.prompt(null);
-  ui.setCurrency(S.past('burial') ? 'dollars' : 'pesos'); ui.setMoney(state.pesos);
-  invPanel.emptyText = S.past('newNames') ? 'Gustavo keeps nothing he does not need.' : null;
+  setEra(b.era || 'present');
+  ui.setCurrency(state.era === 'past' ? 'pesos' : 'dollars'); ui.setMoney(state.pesos);
+  invPanel.emptyText = state.era === 'past' ? null : 'Gustavo keeps nothing he does not need.';
+  document.getElementById('memory-tag').textContent = state.era === 'past' ? b.chapter.replace(/^Memory · /, '') : '';
   G.tickers.clear();
   b.onStart?.(G, S);
   if (b.type === 'scene') {
@@ -542,6 +557,7 @@ function snapshot() {
     flags: Object.fromEntries(Object.entries(state.flags).filter(([k]) => !/^cleared:(ev|cops)\d|^cleared:(ortuzar|choros2)$/.test(k))),
     stats: { ...state.stats }, side: state.side ? JSON.parse(JSON.stringify(state.side)) : null,
     empire: state.empire ? JSON.parse(JSON.stringify(state.empire)) : null,
+    era: state.era, eras: JSON.parse(JSON.stringify(state.eras)),
   };
 }
 function autosave() {
@@ -586,6 +602,7 @@ function loadGame(save) {
   state.stats = { ...(save.stats || {}) };
   state.side = save.side ? JSON.parse(JSON.stringify(save.side)) : null;
   state.empire = save.empire ? JSON.parse(JSON.stringify(save.empire)) : null;
+  state.era = save.era || 'present'; state.eras = JSON.parse(JSON.stringify(save.eras || {}));
   player.hp = save.hp > 0 ? save.hp : PLAYER_HP;
   ui.setHealth(player.hp / PLAYER_HP);
   ui.setMoney(state.pesos);
@@ -599,10 +616,11 @@ function loadGame(save) {
 function newGame() {
   resetForLoad();
   state.inv = []; state.pesos = 0; state.flags = {}; state.food = {}; state.stats = {}; state.side = null; state.empire = null;
+  state.era = 'present'; state.eras = {};
   ow.afterLoad();
   player.hp = PLAYER_HP; ui.setHealth(1);
   ui.setMoney(0);
-  setHeroLook('emilio');
+  setHeroLook('emilioCivil');
   startBeat(0);
 }
 
@@ -1182,7 +1200,7 @@ function gameOver(why) {
 function showEnding() {
   mode = 'ending';
   document.exitPointerLock?.();
-  document.body.classList.add('on-title');
+  document.body.classList.add('on-title'); document.body.classList.remove('memory');
   moodOverride = 'dusk';
   showLoc('abq');
   ui.fade(false);

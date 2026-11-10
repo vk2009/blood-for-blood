@@ -209,7 +209,7 @@ export class Empire {
   // ---------------------------------------------------------------- Chapter IV: the war
   // Fear thins (or swells) the enemy's numbers, reputation gets you patched up
   // before a fight, heat and reputation move the bomb timer at the ranch.
-  atWar() { return !!this.E && this.G.S.past('empire'); }
+  atWar() { return !!this.E && this.G.S.past('empire') && this.G.S.present(); }
   bombBonus() {
     const E = this.E;
     if (!E) return 0;
@@ -248,7 +248,7 @@ export class Empire {
   // ---------------------------------------------------------------- HUD
   render() {
     const E = this.E, G = this.G;
-    const show = !!E && G.S.past?.('burial') && (G.mode === 'play' || G.mode === 'talk');
+    const show = !!E && G.S.past?.('burial') && G.S.present() && (G.mode === 'play' || G.mode === 'talk');
     this.el.classList.toggle('show', !!show);
     if (!show) return;
     const html = STATS.map(([k, label, color]) => {

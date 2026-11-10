@@ -6,6 +6,7 @@ import { createCoati, animateCoati, createFruit, createRifle, muzzleFlash } from
 import { shootingRange } from './range.js';
 import { sfx } from './sfx.js';
 import { SCENES2, CONVOS2, BEATS2, ITEMS2 } from './story2.js';
+import { reorder } from './revised.js';
 
 // ================================================================ items
 export const ITEMS = {
@@ -987,7 +988,7 @@ const SCENES = {
 
   // ---------------------------------------------------------- Chapter V
   async mexico(d, G) {
-    await d.card('Mexico', '1989 — Three years later.\nLos Pollos Hermanos has crossed the border. So has the product.', 4.5);
+    await d.card('Hacienda of Don Eladio Vuente', 'Los Pollos Hermanos has crossed the border. So has the product.', 4.5);
     d.set('hacienda');
     d.cam([-20, 12, 34], [0, 0, -10], { to: [-12, 8, 26], dur: 7 });
     await d.fadeIn(0.8);
@@ -1470,7 +1471,8 @@ const CH3 = 'Chapter II · Los Pollos Hermanos';
 const CH4 = 'Chapter II · Blood in the Streets';
 const CH5 = 'Chapter II · Generalísimo';
 
-export const BEATS = [
+// The story in chronological order; the game plays it in the revised order below.
+export const CHRONO_BEATS = [
   { id: 'prologue', type: 'scene', chapter: CH0, play: SCENES.prologue },
   { id: 'wake', type: 'scene', chapter: CH1, play: SCENES.wake },
   { id: 'savings', type: 'goal', chapter: CH1, look: 'emilio', text: 'Take your savings from under the mattress', loc: 'room1', spawn: 'bed',
@@ -1547,4 +1549,5 @@ export const BEATS = [
   { id: 'finale', type: 'scene', chapter: CH5, play: SCENES.finale, inPlace: true },
   ...BEATS2,
 ];
+export const BEATS = reorder(CHRONO_BEATS);
 export const BEAT_INDEX = Object.fromEntries(BEATS.map((b, i) => [b.id, i]));

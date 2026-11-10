@@ -314,3 +314,11 @@ body.fighting #empire, body.gunfight #empire { display: none; }
 .plate.enemy.heavy::after { content: 'DODGE'; display: block; text-align: center; font: 900 11px/1 var(--display); letter-spacing: 2px; color: #ff5a3a; margin-top: 3px; }
 .plate.enemy.exposed::after { content: 'RELOADING'; display: block; text-align: center; font: 900 11px/1 var(--display); letter-spacing: 2px; color: #ffe07a; margin-top: 3px; }
 @media (max-width: 700px) { #empire { top: auto; bottom: 120px; right: 10px; width: 160px; } }
+
+/* Memories (flashbacks): faded, warm, with a label */
+body.memory #game canvas { filter: sepia(0.38) saturate(0.72) contrast(1.06) brightness(1.02); }
+#memory-tag { position: fixed; top: 50%; right: 12px; transform: translateY(-50%); writing-mode: vertical-rl;
+  font: 800 11px/1 inherit; letter-spacing: 4px; text-transform: uppercase; color: rgba(239,230,210,0.55); pointer-events: none; z-index: 3; display: none; }
+body.memory #memory-tag { display: block; }
+body.memory #memory-tag::before { content: 'MEMORY · '; color: var(--gold); }
+body.on-title #memory-tag { display: none; }

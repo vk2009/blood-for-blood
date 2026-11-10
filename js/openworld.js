@@ -632,7 +632,7 @@ export class OpenWorld {
     for (const n of L.npcs) if (Math.hypot(n.pos.x - p.pos.x, n.pos.z - p.pos.z) < 14) this.flee(n, 5);
     this.addStat('assaults');
     const cfg = CRIME[L.id];
-    if (G.empire?.E && G.S.past('burial')) G.empire.add('heat', 2, 'Seen hitting people in the street');
+    if (G.empire?.E && G.S.past('burial') && G.S.present()) G.empire.add('heat', 2, 'Seen hitting people in the street');
     if (G.heroLook === 'general') {
       this.addStat('fear');
       G.ui.toast('Nobody stops a General. They only remember his face.', 'Fear', true);
@@ -845,10 +845,10 @@ export class OpenWorld {
       <li><span>Side jobs done</span><b>${s.jobs || 0}</b></li>
       <li><span>Pesos found in the street</span><b>$ ${fmtPesos(s.found || 0)}</b></li>
       <li><span>Reputation</span><b>${rep}</b></li>
-      ${bondTxt && !S.past('finale') ? `<li><span>${S.past('newNames') ? 'Max' : 'Mateo'}</span><b>${bondTxt}</b></li>` : ''}
+      ${bondTxt && !S.present() ? `<li><span>Mateo</span><b>${bondTxt}</b></li>` : ''}
     </ul></section>`);
     const E = st.empire;
-    if (E && S.past('burial')) {
+    if (E && S.past('burial') && S.present()) {
       const crew = ['victor', 'tyrus', 'mike', 'gale', 'saul'].filter((k) => st.flags['crew:' + k]).length;
       const strikes = [
         ['Llantera El Tío', st.flags['job:revTires'], 'Recruit Tyrus (or reach 45 fear) — he brings you the job'],

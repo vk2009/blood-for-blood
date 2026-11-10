@@ -115,12 +115,12 @@ export const SCENES2 = {
     await sleep(d, 3.5);
     await d.fadeOut(1.2);
     G.setMood(null);
-    await d.card('End of Chapter II', 'Emilio Gonzalez was buried in the desert next to his friend.\nOnly Gustavo Fring drove away.', 5);
+    await d.card('', 'Emilio Gonzalez was buried in the desert next to his friend.\nOnly Gustavo Fring drove away.', 5);
   },
 
   // ---------------------------------------------------------- Chapter III
   async abqArrive(d, G) {
-    await d.card('Chapter III · Empire', 'Albuquerque, New Mexico — 1990.', 4);
+    await d.card('Chapter I · Empire', 'Albuquerque, New Mexico — 1990.', 4);
     d.set('abq');
     d.cam([-60, 14, 40], [-28, 3, 14], { to: [-44, 6, 22], lookTo: [-28, 4, 16], dur: 8 });
     await d.fadeIn(0.8);
@@ -171,12 +171,12 @@ export const SCENES2 = {
     await sleep(d, 1.4);
     await d.fadeOut(1.4);
     G.setMood(null);
-    await d.card('BLOOD FOR BLOOD', 'End of Chapter III.', 5);
+    await d.card('BLOOD FOR BLOOD', 'End of Chapter I.', 5);
   },
 
   // ---------------------------------------------------------- Chapter IV
   async catalyst(d, G) {
-    await d.card('Chapter IV · Catalyst', 'Albuquerque — 2008.\nEighteen years. Fourteen restaurants. Not one mistake.', 5);
+    await d.card('Chapter II · Catalyst', 'Albuquerque — 2008.\nEighteen years. Fourteen restaurants. Not one mistake.', 5);
     d.set('pollosABQ');
     const g = d.actor('gus', 'emilioCivil', -1.8, -2.2, 0);
     const w = d.actor('walter', 'walter', 0, 0, 0); sitAt(w, -5.5, -0.5, Math.PI / 2);
@@ -485,7 +485,7 @@ export const SCENES2 = {
     await d.say('', '*He takes Max’s photo off the wall and puts it in his breast pocket.*');
     await d.fadeOut(1);
     G.setMood(null);
-    await d.card('Chapter IV · Blood for Blood', 'Rancho Salamanca, Chihuahua.\nThe last man from the pool.', 4.5);
+    await d.card('Chapter III · Blood for Blood', 'Rancho Salamanca, Chihuahua.\nThe last man from the pool.', 4.5);
   },
 
   async finalBell(d, G) {
