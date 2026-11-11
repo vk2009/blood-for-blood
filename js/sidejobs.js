@@ -8,6 +8,7 @@
 // instant: true jobs are one conversation (a single tough choice) rather than a task.
 
 import { EMPIRE_JOBS } from './empirejobs.js';
+import { TASK_JOBS } from './empiretasks.js';
 
 const CHAPTER_I = (S) => S.at('toStation') || S.at('board');
 const SANTIAGO = (S) => S.past('getId') && !S.past('resign');
@@ -354,7 +355,7 @@ export const JOBS = [
   },
 ];
 
-JOBS.push(...EMPIRE_JOBS);
+JOBS.push(...EMPIRE_JOBS, ...TASK_JOBS);
 
 const FLOUR = [{ id: 'flour1', x: -55, z: 4.5 }, { id: 'flour2', x: 3.2, z: -30 }, { id: 'flour3', x: 52, z: -15 }];
 
@@ -415,7 +416,7 @@ export const CRIME = {
   abq: {
     interval: [70, 120], police: true, knife: 0.4, thugLooks: ['thug', 'thug2', 'dealer'], reward: [200, 600],
     policeLook: 'apd', policeName: 'APD!', policeBarks: ['Albuquerque Police! Get on the ground!', 'Hands where I can see them!'],
-    when: (S) => S.at('empire'),
+    when: (S) => S.empireOpen(),
     barks: ['Mind your business, chicken man.', 'Keep walking, old man.'],
     kinds: [{ name: 'Mugging', alert: 'Someone is being mugged on Central Avenue.' }, { name: 'Robbery', alert: 'A shopkeeper is shouting for help.' }],
   },

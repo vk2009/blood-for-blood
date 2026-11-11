@@ -345,7 +345,7 @@ export class OpenWorld {
   // cfg.shoot = { [checkpointIndex]: [[x, z], ...] } — target positions.
   startStation(r, spots) {
     const G = this.G, cp = r.points[r.i - 1];
-    const st = { targets: [], left: spots.length, rifle: createRifle(), flash: muzzleFlash(), cool: 0, flashT: 0 };
+    const st = { targets: [], left: spots.length, rifle: createRifle(), flash: muzzleFlash(), cool: 0, flashT: 0, t: 0, nudged: false };
     st.rifle.position.set(-0.19, 1.34, 0.42);
     st.rifle.add(st.flash); st.flash.position.set(0, 0.04, 0.62);
     G.hero.root.add(st.rifle);
@@ -377,7 +377,15 @@ export class OpenWorld {
   }
   updateStation(r, dt) {
     const G = this.G, st = r.station, I = G.input;
-    st.cool -= dt; st.flashT -= dt;
+    st.cool -= dt; st.flashT -= dt; st.t += dt;
+    // Never get stuck at a firing point: a hint, then the sergeant waves you on.
+    if (st.t > 14 && !st.nudged) { st.nudged = true; G.ui.toast('Look for the round targets on posts ahead of you. Move the mouse to aim — the crosshair turns red on a hit.', 'Shooting station'); }
+    if (st.t > 30) {
+      r.misses = (r.misses || 0) + st.left;
+      for (const { t } of st.targets) if (t.userData.state === 'up') { t.userData.state = 'hit'; t.userData.want = 0; }
+      st.left = 0;
+      G.ui.toast('"¡Muévase, recluta!" The sergeant waves you on — the missed targets count against you.', 'Shooting station', true);
+    }
     st.flash.visible = st.flashT > 0;
     G.hero.pose.point = 1;
     G.player.modelYaw = G.player.yaw;
@@ -392,9 +400,18 @@ export class OpenWorld {
       const ray = new THREE.Raycaster();
       ray.setFromCamera({ x: 0, y: 0 }, G.camera);
       const boards = st.targets.filter(({ t }) => t.userData.state === 'up').map(({ t }) => t.userData.board);
-      const hit = ray.intersectObjects(boards, false)[0];
-      if (hit) {
-        const g = hit.object.parent;
+      let hitObj = ray.intersectObjects(boards, false)[0]?.object;
+      // aim assist: a shot within a few degrees of a target's centre counts
+      if (!hitObj) {
+        const P = new THREE.Vector3();
+        let best = 0.075;
+        for (const b of boards) {
+          const ang = b.getWorldPosition(P).sub(ray.ray.origin).normalize().angleTo(ray.ray.direction);
+          if (ang < best) { best = ang; hitObj = b; }
+        }
+      }
+      if (hitObj) {
+        const g = hitObj.parent;
         g.userData.state = 'hit'; g.userData.want = 0; st.left--;
         sfx.ding();
         const c = document.getElementById('crosshair');
@@ -410,7 +427,8 @@ export class OpenWorld {
   }
   updateRun(dt) {
     const r = this.run, p = this.G.player.pos;
-    r.t += dt;
+    // the clock stops if you've been stuck at a firing point for a while
+    if (!(r.station && r.station.t > 10)) r.t += dt;
     const left = r.time - r.t;
     if (r.rival) {
       const R = r.rival;

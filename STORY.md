@@ -359,24 +359,41 @@ The journal lists which of these are active.
 
 ## 12. Revised structure (`revised` branch)
 
-The story is now told around **Gus's revenge**. It opens on Max's death; everything after is the hunt for the men at the pool, and Emilio's life in Chile returns as **playable memories** between the present-day chapters. Scenes and missions are unchanged — `js/revised.js` sets the order, marks each beat *present* or *past*, and adds short bridges into and out of each memory.
+The story is told around **Gus's revenge**. It opens on Max's death. Emilio's past in Chile comes back as **playable memories that cut in during the hunt itself** — at the moment a strike lands, the way a film cuts away — and when a memory ends you are back exactly where you stood, mid-hunt, with any job still in progress. Scenes and missions are unchanged; `js/revised.js` sets the order, the hunt stages and the bridges.
 
-| # | Era | Section | Contents |
-|---|---|---|---|
-| 1 | Present | **Prologue · The Pool — Mexico, 1986** | Cold open → meet Don Eladio → Max is shot → leave the hacienda → bury Max, vow revenge |
-| 2 | Memory | Valparaíso, 1964–1976 | Coati, Mamá, the room, the alleys, the train |
-| 3 | Present | **Chapter I · Empire** | Albuquerque, the ledger |
-| 4 | Memory | Regimiento Tacna, 1976–1980 | Boot camp, Víctor, the rise |
-| 5 | Present | Chapter I · Empire | Build the empire; Hector comes to collect |
-| 6 | Memory | The General, 1981 | Extortion, the market, meeting Mateo, the discharge |
-| 7 | Present | **Chapter II · Catalyst** | The twins, Juan Bolsa |
-| 8 | Memory | Los Pollos Hermanos, 1982–1985 | The plan, the restaurant, Schuler |
-| 9 | Present | Chapter II · Catalyst | Gale, Victor, firing Walter |
-| 10 | Memory | Blood in the Streets, 1986 | The revolt, new names |
-| 11 | Present | **Chapter III · Blood for Blood** | Mexico again, Eladio, Rancho Salamanca |
+| # | Era | What happens |
+|---|---|---|
+| 1 | Present | **Prologue · The Pool (Mexico, 1986):** meet Don Eladio → Max is shot → bury Max, vow revenge |
+| 2 | Present | **Chapter I · Empire:** Albuquerque, the ledger. *Hunt the men from the pool — strike 1/3* |
+| — | Memory | Strike 1 (the Salamanca ledger in his hands) → **Valparaíso, 1964–1976** |
+| 3 | Present | Back on Central. *Strike 2/3* |
+| — | Memory | Strike 2 (the cartel's money) → **Regimiento Tacna, 1976–1980** |
+| 4 | Present | *Strike 3/3* — Rogelio, who held Gus down |
+| — | Memory | Strike 3 ("your friend") → **The General, 1981** — meeting Mateo |
+| 5 | Present | Finish the empire (crew, restaurants, product); Hector comes to collect |
+| 6 | Present | **Chapter II · Catalyst:** the twins, Juan Bolsa |
+| — | Memory | **Los Pollos Hermanos, 1982–1985** |
+| 7 | Present | Gale, Victor, firing Walter |
+| — | Memory | **Blood in the Streets, 1986** — the revolt, new names |
+| 8 | Present | **Chapter III · Blood for Blood:** Mexico again, Eladio, Rancho Salamanca |
 
 **Memory rules**
-- Memories are shown with a faded sepia look and a "MEMORY" label on the right edge.
-- Present day and memories keep **separate wallets, pockets and food**: dollars and Gus's things now; pesos and Emilio's things then. Health refills when the era changes.
-- Gus starts the cold open still carrying the coffee tin and Mamá's photo; the memories explain why, and he buries them with Max.
+- Faded sepia look and a "MEMORY" label on the right edge.
+- Present day and memories keep separate wallets, pockets, food and side jobs (dollars and Gus's things now; pesos and Emilio's things then). Health refills when the era changes. Gus's position and any job in progress are restored when a memory ends.
 - The empire HUD, heat and journal empire lines only appear in the present.
+
+**Empire tasks are played, not clicked.** Choosing a move in the ledger pays for it and starts a mission (`js/empiretasks.js`); the empire changes only when you finish it:
+
+| Ledger move | Mission |
+|---|---|
+| Open a restaurant | Sign the lease with the realtor → pass the health inspection (honest or envelope) → hire a manager |
+| Add a route | Load product at the Madrigal dock → meet the new distributor (sometimes it's a setup: fight) |
+| Invest in the lab | Collect three crates of glassware around Central → deliver them to the lab |
+| Pay off officials | Hand the envelope to the councilman's aide → lose the DEA tail before Route 66 |
+| Send a message | Fight the rival crew on your corner |
+| Charity fun-run | Find Hank Schrader at UNM → run the 5K (beat Hank for extra reputation) |
+| Mike: clean house | Chase down the informant before he reaches the motel |
+
+One task at a time; two ledger moves a week.
+
+**Obstacle course fixes:** all firing-point targets now stand ahead of you along the route, shots within a few degrees of a target count, a hint appears after 14 s at a station, the sergeant waves you on after 30 s (missed targets count against you), and the course clock pauses once you've been at a station for 10 s.

@@ -3,7 +3,7 @@
 // for the job API); the story only moves on when the empire is ready.
 // Crisis jobs (DEA raid, mutiny) are started by the ledger when the numbers go bad.
 
-const EMPIRE = (S) => S.at('empire');
+const EMPIRE = (S) => S.empireOpen();
 const fightStep = (text, target, cfg, onWin, extra = {}) => ({
   text, target, retry: 'idle',
   enter(J) { J.fight(cfg); },

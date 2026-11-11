@@ -1287,7 +1287,8 @@ export const CONVOS = {
         label: 'Obstacle course', time: 80, noRivalLose: true, rival: { look: 'victor', name: 'Víctor', time: 66 },
         points: [[-16, -15], [-36, -15], [-36, 32], [0, 35], [36, 32], [36, -15], [4, 2]],
         // firing points: after reaching checkpoint N, shoot these targets before moving on
-        shoot: { 1: [[-38, -27], [-32, -30], [-27, -26]], 3: [[-6, 40.5], [5, 40.5]], 4: [[29, 39], [36, 40], [24, 37]] },
+        // targets stand ahead of each firing point, along the direction you run next
+        shoot: { 1: [[-38.5, -5], [-36, -2], [-34.2, -7]], 3: [[8, 37.5], [11, 33.5], [14, 38]], 4: [[34.2, 24], [38, 21], [35.5, 17.5]] },
         onWin: (r) => {
           const shots = r.misses ? ` · ${r.misses} missed shot${r.misses > 1 ? 's' : ''}` : ' · not one shot wasted';
           if (r.beatRival) { G.setFlag('bc:beatVictor'); G.ui.toast(`${r.time.toFixed(1)} s — ahead of Víctor${shots}`, '¡Así se hace!'); }

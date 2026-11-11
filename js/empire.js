@@ -71,25 +71,34 @@ export class Empire {
   }
 
   // ---------------------------------------------------------------- the ledger (desk in the office)
-  moves() {
+  // Each move is a mission (see empiretasks.js); fx apply when it is finished.
+  moves(all = false) {
     const E = this.E, G = this.G;
     const m = [
-      { id: 'restaurant', text: `Open a new Los Pollos Hermanos (${usd(40000)}) — +reputation, a little heat`, cost: 40000, ok: E.restaurants < 6,
+      { id: 'restaurant', task: 'tRestaurant', step: 'lease', text: `Open a new Los Pollos Hermanos (${usd(40000)}) — +reputation, a little heat`, cost: 40000, ok: E.restaurants < 6,
         fx: { rep: 6, heat: 3 }, then: () => { E.restaurants++; } },
-      { id: 'route', text: `Add a distribution route (${usd(25000)}) — more money, much more heat`, cost: 25000, ok: E.routes < 5,
+      { id: 'route', task: 'tRoute', step: 'load', text: `Add a distribution route (${usd(25000)}) — more money, much more heat`, cost: 25000, ok: E.routes < 5,
         need: E.product >= 20 + E.routes * 10 ? null : `Product must be ${20 + E.routes * 10}+ before buyers trust a new route.`,
         fx: { heat: 8, rep: 2 }, then: () => { E.routes++; } },
-      { id: 'lab', text: `Invest in the lab (${usd(30000)}) — +product`, cost: 30000, ok: E.product < 100,
+      { id: 'lab', task: 'tLab', step: 'collect', text: `Invest in the lab (${usd(30000)}) — +product`, cost: 30000, ok: E.product < 100,
         fx: { product: this.crew('gale') ? 20 : 12 } },
-      { id: 'payoff', text: `Pay off officials (${usd(this.crew('saul') ? 14000 : 20000)}) — −heat`, cost: this.crew('saul') ? 14000 : 20000, ok: E.heat > 0,
+      { id: 'payoff', task: 'tPayoff', step: 'meet', text: `Pay off officials (${usd(this.crew('saul') ? 14000 : 20000)}) — −heat`, cost: this.crew('saul') ? 14000 : 20000, ok: E.heat > 0,
         fx: { heat: this.crew('saul') ? -25 : -15 } },
-      { id: 'message', text: 'Send a message to a rival crew (free) — +fear, −reputation, +heat', cost: 0, ok: true,
+      { id: 'message', task: 'tMessage', step: 'go', text: 'Send a message to a rival crew (free) — +fear, −reputation, +heat', cost: 0, ok: true,
         fx: { fear: 12, rep: -8, heat: 5 } },
-      { id: 'charity', text: `Sponsor a charity fun-run for the DEA (${usd(15000)}) — +reputation, −heat`, cost: 15000, ok: true,
+      { id: 'charity', task: 'tCharity', step: 'meet', text: `Sponsor a charity fun-run for the DEA (${usd(15000)}) — +reputation, −heat`, cost: 15000, ok: true,
         fx: { rep: 10, heat: -6 } },
     ];
-    if (this.crew('mike')) m.push({ id: 'clean', text: `Mike: clean house (${usd(10000)}) — −heat, +fear`, cost: 10000, ok: E.heat > 0, fx: { heat: -25, fear: 4 } });
-    return m.filter((x) => x.ok);
+    if (this.crew('mike')) m.push({ id: 'clean', task: 'tClean', step: 'meet', text: `Mike: clean house (${usd(10000)}) — −heat, +fear`, cost: 10000, ok: E.heat > 0, fx: { heat: -25, fear: 4 } });
+    return all ? m : m.filter((x) => x.ok);
+  }
+  // A ledger task was carried out: now the empire changes.
+  finishTask(id) {
+    const m = this.moves(true).find((x) => x.id === id);
+    if (!m || !this.E) return;
+    m.then?.();
+    this.apply(m.fx, m.text.split(' (')[0]);
+    this.G.emit('empire:changed');
   }
   statusLines() {
     const E = this.E, w = this.week();
@@ -118,11 +127,16 @@ export class Empire {
       if (left <= 0) { await T.say('Gustavo', 'Two moves a week. More than that and you start making mistakes. End the week.'); continue; }
       if (m.need) { await T.say('Gustavo', m.need); continue; }
       if (G.pesos < m.cost) { await T.say('Gustavo', 'Not enough in the safe. Patience.'); continue; }
+      if (this.state.side) {
+        await T.say('Gustavo', '(One thing at a time. Finish what I have started first — or drop it from the Journal, J.)');
+        continue;
+      }
       if (m.cost) G.addPesos(-m.cost, m.text.split(' (')[0]);
       E.moves++;
-      m.then?.();
-      this.apply(m.fx, m.text.split(' (')[0]);
-      this.G.emit('empire:changed');
+      const data = m.id === 'route' ? { spot: (E.routes - 1) % 4, ambush: Math.random() < 0.45 } : {};
+      G.ow.jobFor(m.task).start(m.step, data);
+      await T.say('Gustavo', '(Then I go and do it myself. The ledger only remembers what was done.)');
+      return;
     }
   }
   async report(T) {

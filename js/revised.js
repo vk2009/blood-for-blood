@@ -51,44 +51,11 @@ export const BRIDGES = {
     await d.card('', 'Two Chilean businessmen. A small chain of chicken restaurants —\nand something else, sold out of the back door.\n\nThey have come to ask the most powerful man in Mexico for permission.', 6);
   },
 
-  async mem1In(d, G) {
-    d.set('desert');
-    G.setMood('dusk');
-    const g = d.actor('gus', 'emilioCivil', 1.3, 1.4, -2.4);
-    d.cam([2.6, 1.5, 3.4], [1.0, 1.4, 0.6], { to: [2.2, 1.45, 2.8], dur: 9 });
-    await d.fadeIn(0.8);
-    await d.say('Gustavo', '(Max asked me once why I count every peso twice. I never told him.)');
-    await d.say('Gustavo', '(I should have told him. He would have laughed — and then he would have understood.)');
-    d.drop('gus');
-    G.setMood(null);
-    await intoMemory(d, G, 'Memory', 'Valparaíso, Chile.\nBefore there was a Gustavo Fring.');
-  },
 
-  async mem1Out(d, G) {
-    await d.card('', 'The train carried Emilio Gonzalez away from the sea.\n\nFourteen years later, Gustavo Fring stepped off a plane into the desert,\nwith a dead man’s name to avenge.', 6);
-  },
 
-  async mem2In(d, G) {
-    await presentShot(d, G, 'pollosABQ', 'office', [
-      ['Gustavo', '(Eladio takes twenty percent, and I smile when I pay it.)'],
-      ['Gustavo', '(Discipline. Patience. Obedience — until the day it is no longer necessary.)'],
-      ['Gustavo', '(The army taught me that. Before it taught me anything else.)'],
-    ]);
-    await intoMemory(d, G, 'Memory', 'Regimiento Tacna, Santiago — 1976.');
-  },
 
-  async mem2Out(d, G) {
-    await d.card('Albuquerque', 'The present.\nThe general is gone. The patience stayed.', 4.5);
-  },
 
-  async mem3In(d, G) {
-    await d.card('', 'Hector Salamanca stood in his restaurant and smiled,\nand Gustavo Fring said nothing at all.\n\nThe last time a man had looked at him like that, he was wearing a uniform.', 6);
-    await intoMemory(d, G, 'Memory', 'Santiago — 1981.\nThe morning he met Mateo Zagal.');
-  },
 
-  async mem3Out(d, G) {
-    await d.card('', 'Mateo Zagal had a few good years left.\nGustavo Fring would spend twenty-two of his own making sure they were not forgotten.', 5.5);
-  },
 
   async mem4In(d, G) {
     await d.card('', 'Juan Bolsa stood at the edge of the pool that day.\nOne more name crossed out of the ledger.', 4.5);
@@ -113,25 +80,108 @@ export const BRIDGES = {
   },
 };
 
+// ---------------------------------------------------------------- the hunt (Chapter I)
+// The empire chapter is split into stages. Each strike on the Salamancas is a
+// turning point, and right there — ledger in hand, money in the trunk, a man
+// on his knees — a memory takes over. When it ends, you are back where you
+// stood, mid-hunt.
+const rev = (S) => S.empire?.()?.revenge ?? 0;
+const fear = (S) => S.empire?.()?.fear ?? 0;
+const jobDone = (S, id) => S.flag('job:' + id);
+function huntStep(S) {
+  if (!jobDone(S, 'revTires')) return S.flag('crew:tyrus') || fear(S) >= 45
+    ? { t: 'Tyrus is waiting outside Los Pollos — raid Llantera El Tío, the Salamancas’ tire shop', x: -20, z: 7.4 }
+    : { t: 'Win over Tyrus, the doorman at The Crossroads — he knows the Salamancas’ tire shop', x: 65, z: 9.6 };
+  if (!jobDone(S, 'revHighway')) return S.flag('crew:mike')
+    ? { t: 'Mike is at the Madrigal warehouse — take the Salamancas’ Thursday shipment', x: -46, z: -8.8 }
+    : { t: 'Recruit Mike Ehrmantraut at the Desert Sands Motel — he knows the courier’s route', x: 22, z: -9.5 };
+  if (!jobDone(S, 'revRogelio')) return S.flag('crew:victor')
+    ? { t: 'Victor found one of the men from the pool — talk to him outside Los Pollos', x: -24, z: 7.6 }
+    : { t: 'Recruit Victor in the Los Pollos parking lot — he can find the men from the pool', x: -36, z: 7.6 };
+  return null;
+}
+const hunt = (id, n, extra = {}) => ({
+  id, type: 'goal', look: 'emilioCivil', loc: 'abq', spawn: 'resume', empireOpen: true,
+  text: (S) => { const h = huntStep(S); return `Hunt the men from the pool — strike ${rev(S)}/3. ${h ? h.t : ''}`; },
+  target: (S) => { const h = huntStep(S); return h ? { loc: 'abq', x: h.x, z: h.z } : null; },
+  done: (e, S) => rev(S) >= n,
+  ...extra,
+});
+const STAGES = {
+  hunt1: hunt('hunt1', 1, { loc: 'pollosABQ', spawn: 'office', banner: true }),
+  hunt2: hunt('hunt2', 2),
+  hunt3: hunt('hunt3', 3),
+};
+
+// A memory that cuts in right where Gus stands.
+async function memoryCut(d, G, lines, title, sub) {
+  G.hideHero(true);
+  const P = G.player.pos, yaw = G.player.modelYaw;
+  d.actor('gus', 'emilioCivil', P.x, P.z, yaw);
+  const fx = Math.sin(yaw), fz = Math.cos(yaw);
+  d.cam([P.x + fx * 2.3 + fz * 0.6, 1.66, P.z + fz * 2.3 - fx * 0.6], [P.x, 1.56, P.z],
+    { to: [P.x + fx * 1.6 + fz * 0.4, 1.63, P.z + fz * 1.6 - fx * 0.4], dur: 8 });
+  for (const [who, text] of lines) await d.say(who, text);
+  await intoMemory(d, G, title, sub);
+}
+Object.assign(BRIDGES, {
+  async huntIn1(d, G) {
+    await memoryCut(d, G, [
+      ['', '*The Salamanca ledger. Names, dates, payments, in a careful hand.*'],
+      ['Gustavo', '(Every name in this book owes a debt.)'],
+      ['Gustavo', '(Mamá kept a book like this once. Rent. Bread. Nothing.)'],
+    ], 'Memory', 'Valparaíso, Chile.\nBefore there was a Gustavo Fring.');
+  },
+  async huntOut1(d, G) {
+    G.flash();
+    await d.card('', 'Albuquerque. The ledger is still open in his hands.\nOne strike. Two to go.', 4);
+  },
+  async huntIn2(d, G) {
+    await memoryCut(d, G, [
+      ['', '*The courier’s case is full of cartel money. Hector’s money.*'],
+      ['Gustavo', '(They will want it back. Let them come. Anger loses wars. Discipline wins them.)'],
+      ['Gustavo', '(The army taught me that — the hard way.)'],
+    ], 'Memory', 'Regimiento Tacna, Santiago — 1976.');
+  },
+  async huntOut2(d, G) {
+    G.flash();
+    await d.card('', 'Albuquerque. Sirens somewhere far off on Central.\nTwo strikes. One man from the pool is close.', 4);
+  },
+  async huntIn3(d, G) {
+    await memoryCut(d, G, [
+      ['Gustavo', '(He called Max "your friend". As if Max were someone I happened to stand beside.)'],
+      ['Gustavo', '(I remember the morning I met him. He ran straight into me, with the Carabineros behind him.)'],
+    ], 'Memory', 'Santiago — 1981.\nThe morning he met Mateo Zagal.');
+  },
+  async huntOut3(d, G) {
+    G.flash();
+    await d.card('', 'Albuquerque.\nThree men from the pool are paid for. The rest will take an empire.', 4.5);
+  },
+});
+
 // ---------------------------------------------------------------- order
 // Each segment: [era, chapter label, [beat ids or bridge ids]].
-// Beats keep their own chapter label unless the segment gives one.
 const ORDER = [
   ['present', P0, ['coldOpen', 'mexico', 'meetEladio', 'finale', 'aftermath', 'leaveHacienda', 'burial']],
-  ['present', P0, ['mem1In']],
+  ['present', P1, ['abqArrive', 'ledgerIntro', 'hunt1', 'huntIn1']],
   ['past', M1, ['prologue', 'wake', 'savings', 'toStation', 'board', 'train']],
-  ['present', P1, ['mem1Out', 'abqArrive', 'ledgerIntro', 'mem2In']],
+  ['present', P1, ['huntOut1', 'hunt2', 'huntIn2']],
   ['past', M2, ['enlist', 'bcReport', 'bcCourse', 'bcRations', 'bcVictor', 'victorTalk', 'bcFight', 'rise']],
-  ['present', P1, ['mem2Out', 'empire', 'hectorLooks', 'mem3In']],
+  ['present', P1, ['huntOut2', 'hunt3', 'huntIn3']],
   ['past', M3, ['wake2', 'getId', 'collect', 'crime', 'arrest', 'walkFacility', 'chase', 'gate', 'gateScene', 'office',
     'deskScene', 'findMateo', 'mateoScene', 'montage', 'bribe', 'resign']],
-  ['present', P2, ['mem3Out', 'catalyst', 'cousinsClues', 'cousinsPlan', 'cousinsFight', 'bolsaIntel', 'bolsaHit', 'bolsaEnd', 'mem4In']],
+  ['present', P1, ['huntOut3', 'empire', 'hectorLooks']],
+  ['present', P2, ['catalyst', 'cousinsClues', 'cousinsPlan', 'cousinsFight', 'bolsaIntel', 'bolsaHit', 'bolsaEnd', 'mem4In']],
   ['past', M4, ['plan', 'launder', 'opening', 'pShift', 'pSupply', 'pAmbush', 'pDinner', 'meetPeter', 'peterScene']],
   ['present', P2, ['mem4Out', 'galeDies', 'ambushVictor', 'victorDies', 'fireWalter', 'mem5In']],
   ['past', M5, ['revolt', 'escape', 'newNames']],
   ['present', P3, ['mem5Out', 'mexico2', 'party', 'eladioDrive', 'eladioBoss', 'eladioEnd', 'reunion',
     'final1', 'finalBell', 'final2', 'finalHector', 'final3', 'finalEnd']],
 ];
+// Per-beat adjustments for the new order.
+const OVERRIDES = {
+  empire: { spawn: 'resume', loc: 'abq', empireOpen: true },
+};
 
 // Build the revised beat list from the chronological one.
 export function reorder(chrono) {
@@ -139,9 +189,9 @@ export function reorder(chrono) {
   const out = [];
   for (const [era, chapter, ids] of ORDER) {
     for (const id of ids) {
-      const base = byId[id] || (BRIDGES[id] && { id, type: 'scene', play: BRIDGES[id] });
+      const base = byId[id] || STAGES[id] || (BRIDGES[id] && { id, type: 'scene', play: BRIDGES[id] });
       if (!base) throw new Error(`revised order: unknown beat "${id}"`);
-      out.push({ ...base, era, chapter });
+      out.push({ ...base, ...OVERRIDES[id], era, chapter });
     }
   }
   const missing = chrono.filter((b) => !out.some((o) => o.id === b.id)).map((b) => b.id);

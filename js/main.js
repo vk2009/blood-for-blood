@@ -281,10 +281,15 @@ const state = { beat: 0, inv: [], pesos: 0, flags: {}, food: {}, stats: {}, side
 // dollars and Gus's things now, pesos and Emilio's things then.
 function setEra(era) {
   if (state.era === era) { document.body.classList.toggle('memory', era === 'past'); return; }
-  state.eras[state.era] = { pesos: state.pesos, inv: state.inv, food: state.food };
-  const e = state.eras[era] || { pesos: 0, inv: [], food: {} };
+  // Leaving an era: pocket its money, items and any job in progress, and remember where you stood.
+  ow?.cancelTransient();
+  const where = loc && player ? { loc: loc.id, x: player.pos.x, z: player.pos.z, yaw: player.modelYaw } : null;
+  state.eras[state.era] = { pesos: state.pesos, inv: state.inv, food: state.food, side: state.side, where };
+  const e = state.eras[era] || { pesos: 0, inv: [], food: {}, side: null };
   state.pesos = e.pesos; state.inv = e.inv; state.food = e.food;
+  state.side = e.side ? JSON.parse(JSON.stringify(e.side)) : null;
   state.era = era;
+  if (ow) ow.afterLoad();
   player.hp = PLAYER_HP; ui.setHealth(1);
   document.body.classList.toggle('memory', era === 'past');
 }
@@ -306,6 +311,7 @@ const S = {
   stat: (k) => state.stats[k] || 0,
   empire: () => state.empire,
   present: () => state.era !== 'past',
+  empireOpen: () => !!BEATS[state.beat]?.empireOpen,
 };
 const beatText = (b) => (typeof b?.text === 'function' ? b.text(S) : b?.text || '');
 
@@ -516,7 +522,9 @@ function startBeat(i, from = null) {
   // goal
   setHeroLook(b.look || heroLook);
   moodOverride = b.mood ?? null;
+  const resume = b.spawn === 'resume' ? state.eras.present?.where : null;
   if (from) enterLocation(from.loc, { x: from.x, z: from.z, yaw: from.yaw });
+  else if (resume) enterLocation(resume.loc, { x: resume.x, z: resume.z, yaw: resume.yaw });
   else if (continuing || (b.spawn === 'keep' && loc?.id === b.loc)) {
     applyEnv(); G.hideHero(false); setStoryNpcsVisible(true); buildMinimapBase();
   } else enterLocation(b.loc, b.spawn);
@@ -1253,11 +1261,13 @@ function handleMenuKeys() {
 }
 
 // ---------------------------------------------------------------- loop
+// Debug: ?bgtest keeps the game running in a hidden tab (automated testing).
+const nextFrame = new URLSearchParams(location.search).has('bgtest') ? (f) => setTimeout(f, 16) : requestAnimationFrame;
 const clock = new THREE.Clock();
 let worldT = 0;
 let titleT = 0;
 function frame() {
-  requestAnimationFrame(frame);
+  nextFrame(frame);
   const rawDt = clock.getDelta();
   let dt = Math.min(rawDt, 0.05);
   if (!document.hidden && rawDt < 0.5) adaptResolution(rawDt);
