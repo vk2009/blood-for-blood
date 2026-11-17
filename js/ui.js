@@ -9,7 +9,8 @@ export const fmtMoney = (n) => (currency === 'dollars' ? '$' : '$ ') + fmtPesos(
 
 // ---------------------------------------------------------------- saves
 // v2 saves (open-world branch): older saves point at different story beats.
-const KEYS = { auto: 'bfb.save2.auto', manual: 'bfb.save2.manual' };
+// The revised story has its own save slots (it can live on the same site as the original).
+const KEYS = { auto: 'bfb.revised.auto', manual: 'bfb.revised.manual' };
 export const Saves = {
   read(slot) {
     try { const s = localStorage.getItem(KEYS[slot]); return s ? JSON.parse(s) : null; } catch { return null; }
