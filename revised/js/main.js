@@ -509,6 +509,7 @@ function startBeat(i, from = null) {
     if (!b.inPlace) G.hideHero(true);
     document.exitPointerLock?.();
     director.abort();
+    closeTalk();
     director = G.director = new Director(G);
     const me = director;
     me.run(b.play).then(() => {
@@ -633,19 +634,38 @@ function newGame() {
 }
 
 // ---------------------------------------------------------------- conversations
+// Only one conversation owns the dialogue box at a time. Each convo gets a
+// scoped Talk: once something else takes the box (another convo, a scene, a
+// location change, a fight), the old convo's awaits never resolve, so it can
+// not keep running in the background and fight the new one for the box.
+let convoId = 0;
+const never = () => new Promise(() => {});
+function endConvo() { convoId++; }
+function scopedTalk(id) {
+  const wrap = (k) => (...a) => (id !== convoId ? never() : talk[k](...a).then((r) => (id === convoId ? r : never())));
+  const own = { say: wrap('say'), choice: wrap('choice'), waitAdvance: wrap('waitAdvance') };
+  return new Proxy(talk, {
+    get(t, k) { if (k in own) return own[k]; const v = t[k]; return typeof v === 'function' ? v.bind(t) : v; },
+  });
+}
 async function runConvo(fn, npc = null) {
+  endConvo();
+  talk.close();
+  const id = convoId;
   mode = 'talk';
   ui.prompt(null);
   if (npc) npc.talking = true;
-  try { await fn(talk, G, S); } finally {
+  try { await fn(scopedTalk(id), G, S); } finally {
     if (npc) npc.talking = false;
-    talk.close();
-    if (mode === 'talk') mode = 'play';
+    if (id === convoId) {
+      talk.close();
+      if (mode === 'talk') mode = 'play';
+    }
     interactCooldown = 0.35;
   }
 }
 async function linesConvo(T, name, lines) { for (const l of lines) await T.say(name, l); }
-function closeTalk() { talk.close(); }
+function closeTalk() { endConvo(); talk.close(); }
 
 // ---------------------------------------------------------------- player
 const fwd = new THREE.Vector3(), right = new THREE.Vector3(), move = new THREE.Vector3();
@@ -880,6 +900,7 @@ async function startFight(d) {
   d.armed = false;
   activeDanger = d;
   const actors = loc.thugActors[d.id];
+  endConvo();
   mode = 'talk';
   ui.prompt(null);
   actors.forEach((a) => { a.faceTo = player.pos; });
@@ -1301,9 +1322,9 @@ function frame() {
       updatePlayer(dt, true);
       for (const f of G.tickers) f(dt);
       updateInteraction(dt);
-      updateTriggers();
-      checkDangers();
-      processEvents();
+      if (mode === 'play') updateTriggers();
+      if (mode === 'play') checkDangers();
+      if (mode === 'play') processEvents();
     } else if (active && mode === 'fight') {
       updatePlayer(dt, true);
       const r = brawl.update(dt);
