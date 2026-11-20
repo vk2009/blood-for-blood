@@ -21,6 +21,7 @@ import { sfx } from './sfx.js';
 import { OpenWorld } from './openworld.js';
 import { Gunfight } from './gunplay.js';
 import { Empire } from './empire.js';
+import { createBike, SEAT_LIFT } from './bike.js';
 
 // ---------------------------------------------------------------- renderer
 let MAX_DPR = Math.min(devicePixelRatio, 1.0);
@@ -670,10 +671,91 @@ function closeTalk() { endConvo(); talk.close(); }
 // ---------------------------------------------------------------- player
 const fwd = new THREE.Vector3(), right = new THREE.Vector3(), move = new THREE.Vector3();
 const WALK = 2.9, RUN = 6.2;
+// ---------------------------------------------------------------- motorbike
+// T gets on / off. Present day, outdoors, outside fights, races and chases only.
+const bike = { on: false, speed: 0, lean: 0, mesh: null, msgT: 0 };
+function bikeBlock() {
+  if (!S.present()) return 'No bike in the memories of Chile.';
+  if (mode !== 'play' || brawl) return 'Not now.';
+  if (loc.interior) return 'Not indoors.';
+  if (ow.run || ow.chase) return 'On foot for this one.';
+  return null;
+}
+function setBike(on) {
+  if (!bike.mesh) { bike.mesh = createBike(); scene.add(bike.mesh); }
+  if (bike.on === on) return;
+  bike.on = on; bike.speed = 0; bike.lean = 0;
+  bike.mesh.visible = on;
+  if (hero) { hero.pose.sit = on ? 1 : 0; hero.pose.guard = on ? 0.45 : 0; }
+  if (on) { player.vy = 0; player.grounded = true; player.modelYaw = player.yaw; sfx.click(); }
+  else if (hero) { hero.root.rotation.z = 0; }
+}
+function updateBikeToggle() {
+  if (bike.on) {
+    const stay = !brawl && S.present() && !loc.interior && !ow.run && !ow.chase && (mode === 'play' || mode === 'talk');
+    if (!stay || (mode === 'play' && input.pressed('KeyT'))) { setBike(false); return; }
+  } else if (mode === 'play') {
+    if (input.pressed('KeyT')) {
+      const why = bikeBlock();
+      if (why) ui.toast(why, 'Motorbike', true); else setBike(true);
+    } else if (!state.flags['tip:bike'] && !bikeBlock()) {
+      state.flags['tip:bike'] = true;
+      ui.toast('Press T to ride the motorbike — W throttle, S brake, A/D steer, Shift for more speed. T again to get off.', 'Motorbike');
+    }
+  }
+}
+function rideBike(dt, canMove, mouseX = 0) {
+  const k = (...c) => canMove && input.down(...c);
+  const thr = (k('KeyW', 'ArrowUp') ? 1 : 0) - (k('KeyS', 'ArrowDown') ? 1 : 0);
+  const steer = (k('KeyA', 'ArrowLeft') ? 1 : 0) - (k('KeyD', 'ArrowRight') ? 1 : 0);
+  const top = k('ShiftLeft', 'ShiftRight') ? 17 : 12;
+  let v = bike.speed;
+  if (thr > 0) v = v < top ? Math.min(top, v + 9 * dt) : Math.max(top, v - 6 * dt);
+  else if (thr < 0) v = v > 0 ? Math.max(0, v - 18 * dt) : Math.max(-3, v - 4 * dt);
+  else v -= Math.sign(v) * Math.min(Math.abs(v), 4 * dt);
+  const grip = Math.min(1, Math.abs(v) / 3) * (v < 0 ? -1 : 1);
+  player.modelYaw += steer * 2.1 * grip * dt;
+  bike.lean += (-steer * Math.min(1, Math.abs(v) / 8) * 0.32 - bike.lean) * Math.min(1, dt * 6);
+  // move in small steps so walls stop the bike even at speed
+  const dist = v * dt, n = Math.max(1, Math.ceil(Math.abs(dist) / 0.18));
+  const dx = Math.sin(player.modelYaw), dz = Math.cos(player.modelYaw);
+  let lost = 0;
+  for (let i = 0; i < n; i++) {
+    const bx = player.pos.x + dx * dist / n, bz = player.pos.z + dz * dist / n;
+    player.pos.x = bx; player.pos.z = bz;
+    loc.collide(player.pos, 0.45);
+    loc.pushFromTraffic(player.pos, 0.45);
+    lost += Math.hypot(player.pos.x - bx, player.pos.z - bz);
+  }
+  if (Math.abs(dist) > 1e-4 && lost > Math.abs(dist) * 0.5) {          // ran into something
+    if (Math.abs(v) > 7) { G.shake = Math.max(G.shake, 0.25); sfx.thud(); }
+    v *= 0.25;
+  }
+  bike.speed = v;
+  for (const nn of [...peds, ...storyNpcList()]) {
+    const ddx = nn.pos.x - player.pos.x, ddz = nn.pos.z - player.pos.z, d = Math.hypot(ddx, ddz), min = 0.5 + nn.radius;
+    if (d < min && d > 1e-5 && nn.def?.wander !== 0) { nn.pos.x += (ddx / d) * (min - d); nn.pos.z += (ddz / d) * (min - d); }
+    else if (d < min && d > 1e-5) { player.pos.x -= (ddx / d) * (min - d); player.pos.z -= (ddz / d) * (min - d); bike.speed *= 0.5; }
+  }
+  player.pos.y = 0; player.vy = 0; player.grounded = true;
+  // the camera swings round behind the bike while riding
+  if (Math.abs(v) > 1.5 && Math.abs(mouseX) < 1) player.yaw = lerpAngle(player.yaw, player.modelYaw, 1 - Math.exp(-2.2 * dt));
+  hero.pose.sit = 1; hero.pose.guard = 0.45;
+  hero.root.position.copy(player.pos); hero.root.position.y += SEAT_LIFT;
+  hero.root.rotation.set(0, player.modelYaw, bike.lean, 'YXZ');
+  hero.blob.visible = true;
+  hero.update(dt, 0, false);
+  const m = bike.mesh;
+  m.position.copy(player.pos);
+  m.rotation.set(0, player.modelYaw, bike.lean, 'YXZ');
+  for (const w of m.userData.wheels) w.rotation.x += v * dt / 0.33;
+}
+
 function updatePlayer(dt, canMove) {
   const { dx, dy } = input.consumeMouse();
   player.yaw -= dx * 0.0026;
   player.pitch = THREE.MathUtils.clamp(player.pitch + dy * 0.002, -0.35, 1.2);
+  if (bike.on) { rideBike(dt, canMove, dx); return; }
   const f = canMove ? (input.down('KeyW', 'ArrowUp') ? 1 : 0) - (input.down('KeyS', 'ArrowDown') ? 1 : 0) : 0;
   const s = canMove ? (input.down('KeyD', 'ArrowRight') ? 1 : 0) - (input.down('KeyA', 'ArrowLeft') ? 1 : 0) : 0;
   fwd.set(Math.sin(player.yaw), 0, Math.cos(player.yaw));
@@ -1318,6 +1400,7 @@ function frame() {
     updateSun(director.focus);
   } else if (loc) {
     const active = !paused;
+    if (active) updateBikeToggle();
     if (active && mode === 'play') {
       updatePlayer(dt, true);
       for (const f of G.tickers) f(dt);
@@ -1357,6 +1440,7 @@ function frame() {
     updateWaypoint();
     updateSun(player.pos);
   }
+  if (bike.on && mode !== 'play' && mode !== 'talk') setBike(false);   // cutscenes, fades, title, game over
   if (!paused) talk.update(dt);
   empire.update();
   input.endFrame();
