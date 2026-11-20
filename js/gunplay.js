@@ -8,6 +8,7 @@ import { lerpAngle } from './npc.js';
 import { fallYaw } from './combat.js';
 import { sfx } from './sfx.js';
 import { mat } from './character.js';
+const _v = new THREE.Vector3();
 
 const ENEMY_HP = 60;
 const SHOT_DMG = 34;
@@ -133,13 +134,17 @@ export class Gunfight {
     this.ammo--; this.cool = 0.26; this.flashT = 0.05; this.kick = 1;
     sfx.gunshot(); G.shake = Math.max(G.shake, 0.12);
     if (!aiming) G.player.modelYaw = G.player.yaw;
-    const spread = aiming ? 0.006 : 0.05;
+    const spread = aiming ? 0 : 0.012;
     this.ray.setFromCamera({ x: (Math.random() - 0.5) * spread * 2, y: (Math.random() - 0.5) * spread * 2 }, cam);
+    this.ray.far = Infinity;   // canSee() shortens the shared ray — a shot must reach any distance
     const live = this.enemies.filter((e) => !e.down).map((e) => e.hit);
     const hits = this.ray.intersectObjects([...live, ...G.loc.occluders], false);
-    const h = hits.find((x) => x.distance > 1.2);   // skip the wall right behind the camera
-    if (h?.object.userData.shooter) {
-      const e = h.object.userData.shooter;
+    // The bullet leaves Gus's gun, not the camera: ignore anything between the camera and him.
+    const R = this.ray.ray.clone(), P = G.player.pos;   // clone: canSee() reuses this.ray
+    const skip = Math.max(1.2, _v.set(P.x, 1.3, P.z).sub(R.origin).dot(R.direction) + 0.4);
+    const h = hits.find((x) => x.distance > skip);
+    const e = h?.object.userData.shooter || this.assist(R, h?.distance ?? Infinity, aiming);
+    if (e) {
       e.hp -= SHOT_DMG;
       e.flinch = 0.3; e.a.tweenPose('hurt', 1, 0.05);
       this.cross.classList.add('hit'); setTimeout(() => this.cross.classList.remove('hit'), 120);
@@ -158,6 +163,23 @@ export class Gunfight {
   }
 
   // ------------------------------------------------ enemies
+  // Aim assist: a shot that passes just beside someone in plain view still hits.
+  assist(R, wallDist, aiming) {
+    const P = this.G.player.pos, gun = new THREE.Vector3(P.x, 1.35, P.z);
+    let best = null, bestA = Infinity;
+    for (const e of this.enemies) {
+      if (e.down) continue;
+      for (const y of [0.55, 1.05, 1.45]) {           // legs, body, head
+        const c = new THREE.Vector3(e.pos.x, y * e.a.h, e.pos.z);
+        const to = c.clone().sub(R.origin), d = to.length();
+        if (d > wallDist + 0.5) continue;               // behind the wall the shot hit
+        const ang = to.normalize().angleTo(R.direction);
+        const tol = (aiming ? 0.045 : 0.07) + Math.atan(0.45 / d);
+        if (ang < tol && ang < bestA && this.canSee(gun, c)) { best = e; bestA = ang; }
+      }
+    }
+    return best;
+  }
   canSee(from, to) {
     const dir = new THREE.Vector3().subVectors(to, from);
     const d = dir.length(); dir.normalize();
